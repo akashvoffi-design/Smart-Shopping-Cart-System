@@ -1,0 +1,85 @@
+# ──────────────────────────────────────────────
+# Dependencies
+# ──────────────────────────────────────────────
+node_modules/
+.pnp/
+.pnp.js
+
+# ──────────────────────────────────────────────
+# Next.js Build Output
+# ──────────────────────────────────────────────
+.next/
+out/
+
+# ──────────────────────────────────────────────
+# Environment Variables (secrets)
+# ──────────────────────────────────────────────
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# ──────────────────────────────────────────────
+# Python
+# ──────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+dist/
+build/
+.venv/
+venv/
+env/
+
+# ──────────────────────────────────────────────
+# ML Model Weights (large binary files)
+# ──────────────────────────────────────────────
+*.pt
+*.pth
+*.onnx
+*.tflite
+models/
+runs/
+training/runs/
+
+# ──────────────────────────────────────────────
+# Dataset (large files)
+# ──────────────────────────────────────────────
+dataset/DMart.csv/
+dataset/products.json
+training/dataset/
+training/brand_dataset/
+
+# ──────────────────────────────────────────────
+# IDE & Editor
+# ──────────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# ──────────────────────────────────────────────
+# OS Files
+# ──────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# ──────────────────────────────────────────────
+# TypeScript Build Info
+# ──────────────────────────────────────────────
+tsconfig.tsbuildinfo
+
+# ──────────────────────────────────────────────
+# Misc
+# ──────────────────────────────────────────────
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.agents/
+skills-lock.json
+*.zip

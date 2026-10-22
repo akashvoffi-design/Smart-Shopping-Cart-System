@@ -1,0 +1,26 @@
+# SmartCart AI - YOLO Grocery Object Detection Dataset Configuration
+# Standard YOLO formatted dataset for training custom grocery recognition models
+
+path: ./training/dataset  # Dataset root directory relative to project
+train: images/train       # Train images (relative to 'path')
+val: images/val           # Validation images (relative to 'path')
+test: images/test         # Test images (optional)
+
+# Number of custom grocery classes
+nc: 13
+
+# Class names list (indexes correspond to class IDs in label .txt files)
+names:
+  0: apple
+  1: banana
+  2: orange
+  3: broccoli
+  4: carrot
+  5: water_bottle
+  6: dahi_cup
+  7: bread
+  8: donut
+  9: fruit_cake
+  10: chips_packet
+  11: biscuit_packet
+  12: mushroom

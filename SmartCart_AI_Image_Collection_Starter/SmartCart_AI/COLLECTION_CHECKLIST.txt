@@ -1,0 +1,13 @@
+SmartCart AI image collection checklist
+
+For EACH class, collect images across these condition groups:
+- angles: front view back view side view top view tilted 30 degree tilted 45 degree
+- distances: close up 15 cm medium distance 40 cm far view 70 cm
+- lighting: daylight indoor fluorescent lighting dim light shadows backlit
+- backgrounds: plain white background wooden table supermarket shelf shopping cart basket handheld
+- occlusion: partially occluded partly hidden behind another product partially out of frame
+- multiple_items: multiple products two three same items mixed grocery products together
+
+Suggested target: 100-150 usable images per class. The 6 query groups are broad; they do not replace a manual check that front/back/side/top, close/medium/far, lighting, backgrounds, occlusion, and multiple-item scenarios are actually represented.
+For branded products, ensure the package identity is visible. For fresh produce, capture different specimens, sizes, colors, and orientations.
+Keep original images where possible. Do not create synthetic condition variants by rotating or editing one image and count them as independent real photographs.
