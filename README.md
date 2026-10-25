@@ -53,13 +53,13 @@
 
 🎯 **Dual-Sensor Fusion** — Items are confirmed **only** when **both** camera vision identity **AND** load cell weight delta match within ±20% tolerance — eliminating false positives.
 
-🤖 **AI Computer Vision** — Real-time product recognition using custom-trained YOLO models (YOLOv11n / YOLOv26s) with webcam + barcode scanning via HTML5 BarcodeDetector API.
+🤖 **AI Computer Vision & Camera Obstruction Detection** — Real-time product recognition using custom-trained YOLO models (YOLOv11n / YOLOv26s) with webcam + barcode scanning, paired with active anti-fraud camera obstruction and lens covering detection.
 
 ⚖️ **Precision Weight Sensing** — ESP32 + HX711 24-bit ADC load cell with calibrated tare, stability detection, and newline-terminated JSON serial protocol.
 
 💎 **Luxury Glassmorphic UI** — Premium design with glassmorphic surfaces, `backdrop-filter: blur(24px)`, Manrope/Inter typography, pill navigation, and canvas confetti celebrations.
 
-💳 **Smart Payment System** — Server-authoritative price validation, order snapshots, dynamic UPI Autopay / Razorpay QR generation with correlation IDs and audit timestamps.
+💳 **YouPI-PG Dynamic UPI Payment Gateway** — Direct-to-bank settlement engine generating pure vector SVG UPI QR codes and 1-tap deep links (`upi://pay`) for Google Pay, PhonePe, Paytm, and CRED routing to `kash78532@okhdfcbank` with 0% gateway fees.
 
 ☁️ **Cloud-First Backend** — Supabase (PostgreSQL + GoTrue Auth + RLS), real-time cart synchronization, and order history with robust audit trails.
 
@@ -130,11 +130,11 @@ The system follows an **8-step autonomous workflow** from cart pick-up to auto-p
 | **🎨 Frontend** | Next.js 15.1 + React 19 | App Router, TypeScript, Lucide Icons, Canvas Confetti |
 | **🎭 Design System** | Luxury Glassmorphism | `backdrop-filter: blur(24px)`, Manrope/Inter fonts. Color Tokens: Midnight Purple `#25105F`, Sky Blue `#A9D2F0`, Deep Blue `#527CA7`, Warm Gold `#DAB77D`, Emerald `#10B981` |
 | **📊 Data Engine** | 5,198 Products (DMart) | Indian grocery catalog with MRP/selling price, multi-pack weight parsing, barcode provenance tracking |
-| **👁️ Vision** | YOLO v11n / v26s | Custom-trained grocery detection, HTML5 BarcodeDetector, anti-duplicate debouncing |
+| **👁️ Vision & Anti-Fraud** | YOLO v11n / v26s + Obstruction Detector | Custom-trained grocery detection, HTML5 BarcodeDetector, automated camera obstruction / lens covering protection |
 | **⚙️ IoT Firmware** | ESP32 + HX711 | C++ firmware, JSON serial protocol, LED/Buzzer alerts, Hardware Emulator |
 | **🔗 Serial Bridge** | Python (pyserial) | Real-time telemetry bridge: `serial_bridge.py` with simulation mode |
 | **☁️ Backend** | Supabase | PostgreSQL + GoTrue Auth + Row-Level Security (RLS) + Order Snapshots |
-| **💳 Payments** | Razorpay / UPI | Server-authoritative validation, dynamic QR, correlation IDs, audit timestamps |
+| **💳 Payments** | YouPI-PG (Direct UPI) | Dynamic vector SVG UPI QR, 1-tap deep links (`upi://pay`), receiver VPA `kash78532@okhdfcbank`, server verification |
 | **🧠 ML Training** | Ultralytics YOLO | Custom training pipeline with `train.py`, `val.py`, `test_inference.py` |
 
 ---
@@ -391,13 +391,14 @@ supabase/schema.sql
 
 ## 🔐 Sensor Fusion & Payment Rules
 
-### Dual-Sensor Consensus
+### Dual-Sensor Consensus & Anti-Tampering
 
 | Scenario | Result |
 |:---|:---|
 | Camera detection **alone** | Does **NOT** bill the item |
 | Weight change **alone** | Does **NOT** bill the item |
 | Camera + Weight **both agree (within 20%)** | Item **CONFIRMED** and added to cart |
+| Camera Obstructed / Covered | Cart scanning **PAUSED**; on-screen anti-tamper alert displayed until lens cleared |
 
 ### Put-Back Handling
 
@@ -407,9 +408,10 @@ When an item is decremented or removed from the cart, the expected weight is sub
 
 | Feature | Implementation |
 |:---|:---|
-| **Demo Mode** | QR codes and mock checkout clearly labeled as non-live |
+| **YouPI-PG Direct Settlement** | Pure vector SVG UPI QR dynamically generated per order total; payments routed straight to merchant account (`kash78532@okhdfcbank`) with 0% gateway aggregator deductions |
+| **Instant UPI App Handoff** | Native mobile app intent switcher (`upi://pay`) for 1-tap checkout via Google Pay, PhonePe, Paytm, or CRED |
 | **Client Actions** | Button clicks and uploaded screenshots are **never** considered real proof |
-| **Server Verification** | Transitions use **correlation IDs** and **audit timestamps** |
+| **Server Verification** | Transitions use **correlation IDs**, **idempotency keys**, and **audit timestamps** |
 
 ---
 
@@ -428,6 +430,7 @@ porject-IoT/
 │   ├── components/
 │   │   ├── AutonomousDashboardView.tsx   # Main autonomous cart dashboard
 │   │   ├── CameraScanner.tsx             # Camera + barcode scanner
+│   │   ├── CameraObstructionOverlay.tsx  # Anti-fraud camera blockage alert
 │   │   ├── CartList.tsx                  # Shopping cart item list
 │   │   ├── CartHistoryModal.tsx          # Order history modal
 │   │   ├── CustomerProfileModal.tsx      # User profile management
@@ -438,7 +441,7 @@ porject-IoT/
 │   │   ├── WifiPopover.tsx               # WiFi/connectivity status
 │   │   └── BatteryPopover.tsx            # Battery status indicator
 │   ├── data/                     # Static data files
-│   ├── lib/                      # Utility libraries
+│   ├── lib/                      # Utility libraries (cart, obstruction-detector, products)
 │   ├── types/                    # TypeScript type definitions
 │   └── utils/                    # Supabase & helper utilities
 ├── firmware/
