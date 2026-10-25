@@ -35,9 +35,7 @@ def test_classes_endpoint():
     r = requests.get(f"{BASE_URL}/classes")
     assert r.status_code == 200, f"Expected 200, got {r.status_code}"
     data = r.json()
-    print(f"  Total classes: {data.get('total_classes')}")
-    print(f"  Classes: {data.get('classes')}")
-    assert data.get("total_classes") == 13, f"Expected 13 classes, got {data.get('total_classes')}"
+    assert data.get("total_classes") == 34, f"Expected 34 classes, got {data.get('total_classes')}"
     print("  PASS")
     return data
 

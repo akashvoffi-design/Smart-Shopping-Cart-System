@@ -1,12 +1,14 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Camera, CameraOff, Scan, Sparkles, Check, AlertTriangle, Cpu, Layers, Power } from 'lucide-react';
+import { Camera, CameraOff, Scan, Sparkles, Check, AlertTriangle, Cpu, Layers, Power, ShieldAlert } from 'lucide-react';
 import { Product, IoTTelemetry } from '@/types';
 import { getProductByBarcode } from '@/lib/products';
 import { isScanDebounced } from '@/lib/cart-store';
 import { iotSimulator } from '@/lib/iot-simulator';
 import { checkVisionModelStatus, VisionModelStatus, detectBarcodeInVideoFrame } from '@/lib/vision';
+import CameraObstructionOverlay from '@/components/CameraObstructionOverlay';
+import { analyzeVideoFrameForObstruction } from '@/lib/obstruction-detector';
 
 interface CameraScannerProps {
   telemetry: IoTTelemetry;
@@ -24,6 +26,16 @@ export default function CameraScanner({ telemetry, onItemValidated }: CameraScan
     expectedG?: number;
     measuredG?: number;
   }>({ status: 'idle', message: 'Ready to scan items' });
+
+  // Camera Obstruction Detection States & Refs
+  const [isCameraObstructed, setIsCameraObstructed] = useState<boolean>(false);
+  const [isCameraRestored, setIsCameraRestored] = useState<boolean>(false);
+  const obstructionStartTimeRef = useRef<number | null>(null);
+  const lastObstructionCheckTimeRef = useRef<number>(0);
+  const consecutiveClearFramesRef = useRef<number>(0);
+  const wasPreviouslyObstructedRef = useRef<boolean>(false);
+  const restoredTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const sampleObstructionCanvasRef = useRef<HTMLCanvasElement | null>(null);
 
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -88,8 +100,17 @@ export default function CameraScanner({ telemetry, onItemValidated }: CameraScan
         };
       }
       setCameraActive(true);
-    } catch (err) {
-      setCameraError((err as Error).message || 'Unable to access camera. Check device permissions.');
+    } catch (err: unknown) {
+      const errorObj = err as Error;
+      let userFriendlyMsg = errorObj.message || 'Unable to access camera.';
+      if (errorObj.name === 'NotAllowedError' || errorObj.name === 'PermissionDeniedError') {
+        userFriendlyMsg = 'Camera permission denied. Please allow camera access in browser settings.';
+      } else if (errorObj.name === 'NotFoundError' || errorObj.name === 'DevicesNotFoundError') {
+        userFriendlyMsg = 'No camera device detected on this laptop.';
+      } else if (errorObj.name === 'NotReadableError' || errorObj.name === 'TrackStartError') {
+        userFriendlyMsg = 'Camera is currently in use by another application (e.g. Teams, Zoom).';
+      }
+      setCameraError(userFriendlyMsg);
       setCameraActive(false);
     }
   };
@@ -103,6 +124,11 @@ export default function CameraScanner({ telemetry, onItemValidated }: CameraScan
     if (videoRef.current) {
       videoRef.current.srcObject = null;
     }
+    setIsCameraObstructed(false);
+    setIsCameraRestored(false);
+    obstructionStartTimeRef.current = null;
+    wasPreviouslyObstructedRef.current = false;
+    if (restoredTimeoutRef.current) clearTimeout(restoredTimeoutRef.current);
     setCameraActive(false);
   };
 
@@ -112,7 +138,7 @@ export default function CameraScanner({ telemetry, onItemValidated }: CameraScan
     };
   }, []);
 
-  // Real-time video frame barcode scanning loop
+  // Real-time video frame barcode scanning loop with 2-second obstruction detector
   useEffect(() => {
     if (!cameraActive) return;
     let isScanning = true;
@@ -121,6 +147,53 @@ export default function CameraScanner({ telemetry, onItemValidated }: CameraScan
     const intervalId = setInterval(async () => {
       if (!isScanning) return;
       const now = performance.now();
+
+      // 1. Continuous obstruction detection every 100ms
+      let isCurrentlyBlocked = isCameraObstructed;
+      if (now - lastObstructionCheckTimeRef.current >= 100) {
+        lastObstructionCheckTimeRef.current = now;
+        if (videoRef.current && videoRef.current.readyState >= 2) {
+          const analysis = analyzeVideoFrameForObstruction(videoRef.current, sampleObstructionCanvasRef.current || undefined);
+          if (analysis.isObstructed) {
+            consecutiveClearFramesRef.current = 0;
+            if (obstructionStartTimeRef.current === null) {
+              obstructionStartTimeRef.current = now;
+            } else {
+              const elapsed = now - obstructionStartTimeRef.current;
+              // If obstruction remains for 2 continuous seconds, show warning overlay!
+              if (elapsed >= 2000) {
+                isCurrentlyBlocked = true;
+                if (!isCameraObstructed) {
+                  setIsCameraObstructed(true);
+                  wasPreviouslyObstructedRef.current = true;
+                }
+              }
+            }
+          } else {
+            consecutiveClearFramesRef.current++;
+            // Require 3 consecutive clear frames to confirm view is restored
+            if (consecutiveClearFramesRef.current >= 3) {
+              obstructionStartTimeRef.current = null;
+              if (wasPreviouslyObstructedRef.current) {
+                isCurrentlyBlocked = false;
+                setIsCameraObstructed(false);
+                wasPreviouslyObstructedRef.current = false;
+                setIsCameraRestored(true);
+                if (restoredTimeoutRef.current) clearTimeout(restoredTimeoutRef.current);
+                restoredTimeoutRef.current = setTimeout(() => {
+                  setIsCameraRestored(false);
+                }, 3500);
+              }
+            }
+          }
+        }
+      }
+
+      // If camera view is obstructed, suspend barcode recognition
+      if (isCurrentlyBlocked) {
+        return;
+      }
+
       if (now - lastScanTime >= 160) {
         lastScanTime = now;
         if (videoRef.current && videoRef.current.readyState >= 2) {
@@ -132,13 +205,13 @@ export default function CameraScanner({ telemetry, onItemValidated }: CameraScan
           } catch {}
         }
       }
-    }, 160);
+    }, 100);
 
     return () => {
       isScanning = false;
       clearInterval(intervalId);
     };
-  }, [cameraActive, telemetry.weight_g]);
+  }, [cameraActive, telemetry.weight_g, isCameraObstructed]);
 
   const handleBarcodeDetected = (barcode: string) => {
     if (isScanDebounced(barcode)) return;
@@ -305,14 +378,129 @@ export default function CameraScanner({ telemetry, onItemValidated }: CameraScan
                   muted
                   className="camera-video-feed"
                 />
+
+                {/* Real-Time Camera Obstruction Warning Overlay */}
+                <CameraObstructionOverlay
+                  isObstructed={isCameraObstructed}
+                  isRestored={isCameraRestored}
+                />
+
                 <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
                   <div className="scanner-ring" style={{ width: '180px', height: '180px', border: '2px solid #10b981', borderRadius: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     <div style={{ width: '150px', height: '2px', background: 'rgba(16, 185, 129, 0.9)' }} />
                   </div>
                 </div>
-                <div style={{ position: 'absolute', top: '16px', left: '16px', background: 'rgba(255,255,255,0.85)', backdropFilter: 'blur(8px)', padding: '5px 14px', borderRadius: '100px', fontSize: '11px', color: '#166534', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px', border: '1px solid rgba(255,255,255,0.9)' }}>
-                  <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#22c55e', boxShadow: '0 0 6px #22c55e' }} />
-                  LIVE CAMERA • {videoResolution ? `${videoResolution.width} × ${videoResolution.height}` : 'FHD 1080p'}
+
+                {/* Top Status Indicators (Camera Resolution + Live Scanning / Obstruction Status) */}
+                <div style={{ position: 'absolute', top: '16px', left: '16px', zIndex: 10, display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                  <div style={{ background: 'rgba(255,255,255,0.85)', backdropFilter: 'blur(8px)', padding: '5px 14px', borderRadius: '100px', fontSize: '11px', color: '#166534', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px', border: '1px solid rgba(255,255,255,0.9)' }}>
+                    <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#22c55e', boxShadow: '0 0 6px #22c55e' }} />
+                    LIVE CAMERA • {videoResolution ? `${videoResolution.width} × ${videoResolution.height}` : 'FHD 1080p'}
+                  </div>
+
+                  <div
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      padding: '5px 13px',
+                      borderRadius: '100px',
+                      background: isCameraObstructed ? 'rgba(254, 242, 242, 0.95)' : 'rgba(236, 253, 245, 0.95)',
+                      border: isCameraObstructed ? '1.5px solid rgba(239, 68, 68, 0.6)' : '1.5px solid rgba(16, 185, 129, 0.6)',
+                      color: isCameraObstructed ? '#dc2626' : '#059669',
+                      fontSize: '11px',
+                      fontWeight: 700,
+                      backdropFilter: 'blur(8px)',
+                    }}
+                  >
+                    <span
+                      style={{
+                        width: '7px',
+                        height: '7px',
+                        borderRadius: '50%',
+                        background: isCameraObstructed ? '#ef4444' : '#10b981',
+                        boxShadow: isCameraObstructed ? '0 0 8px #ef4444' : '0 0 8px #10b981',
+                      }}
+                    />
+                    <span>{isCameraObstructed ? 'Camera Blocked' : 'Scanning Products...'}</span>
+                  </div>
+                </div>
+
+                {/* Floating Bottom Action Controls */}
+                <div
+                  style={{
+                    position: 'absolute',
+                    bottom: '18px',
+                    left: '50%',
+                    transform: 'translateX(-50%)',
+                    zIndex: 35,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '10px',
+                    background: 'rgba(15, 23, 42, 0.72)',
+                    backdropFilter: 'blur(16px)',
+                    WebkitBackdropFilter: 'blur(16px)',
+                    border: '1.5px solid rgba(255, 255, 255, 0.3)',
+                    padding: '6px 12px',
+                    borderRadius: '100px',
+                    boxShadow: '0 12px 32px rgba(0, 0, 0, 0.35)',
+                  }}
+                >
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (isCameraObstructed) {
+                        setIsCameraObstructed(false);
+                        setIsCameraRestored(true);
+                        setTimeout(() => setIsCameraRestored(false), 3500);
+                      } else {
+                        setIsCameraObstructed(true);
+                      }
+                    }}
+                    style={{
+                      background: isCameraObstructed ? 'rgba(239, 68, 68, 0.3)' : 'rgba(255, 255, 255, 0.14)',
+                      border: isCameraObstructed ? '1px solid rgba(239, 68, 68, 0.6)' : '1px solid rgba(255, 255, 255, 0.3)',
+                      color: '#ffffff',
+                      borderRadius: '100px',
+                      padding: '7px 16px',
+                      fontSize: '12px',
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      transition: 'all 0.2s ease',
+                      whiteSpace: 'nowrap',
+                    }}
+                    title="Toggle simulated obstruction test"
+                  >
+                    <ShieldAlert style={{ width: '14px', height: '14px', color: '#f59e0b' }} />
+                    <span>{isCameraObstructed ? 'Clear Obstruction' : 'Test Blocked Alert'}</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={stopCamera}
+                    style={{
+                      background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
+                      border: '1.5px solid rgba(255, 255, 255, 0.45)',
+                      color: '#ffffff',
+                      borderRadius: '100px',
+                      padding: '7px 18px',
+                      fontSize: '12px',
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      boxShadow: '0 4px 14px rgba(239, 68, 68, 0.45)',
+                      transition: 'all 0.2s ease',
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    <CameraOff style={{ width: '14px', height: '14px' }} />
+                    <span>Stop Camera</span>
+                  </button>
                 </div>
               </div>
             ) : (

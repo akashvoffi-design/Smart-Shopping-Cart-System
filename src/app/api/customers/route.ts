@@ -8,7 +8,43 @@ export async function GET(request: NextRequest) {
     const cookieStore = await cookies();
     const supabase = createClient(cookieStore);
 
-    // 1. Try to get Supabase session
+    // 1. Check if email is explicitly passed in query params
+    const searchParams = request.nextUrl.searchParams;
+    const queryEmail = searchParams.get('email')?.trim().toLowerCase() || null;
+
+    if (queryEmail) {
+      try {
+        const { data: dbCustomer } = await supabase
+          .from('customers')
+          .select('*')
+          .ilike('email', queryEmail)
+          .maybeSingle();
+
+        if (dbCustomer) {
+          registerCustomer({
+            full_name: dbCustomer.full_name || queryEmail.split('@')[0],
+            email: queryEmail,
+            phone: dbCustomer.phone || '',
+            upi_id: dbCustomer.upi_id || '',
+          });
+          return NextResponse.json({ success: true, customer: dbCustomer });
+        }
+      } catch {}
+
+      const existingMem = getCustomerByEmail(queryEmail);
+      if (existingMem) {
+        setActiveSessionCustomer(existingMem.id);
+        return NextResponse.json({ success: true, customer: existingMem });
+      }
+
+      const newCustomer = registerCustomer({
+        full_name: queryEmail.split('@')[0],
+        email: queryEmail,
+      });
+      return NextResponse.json({ success: true, customer: newCustomer });
+    }
+
+    // 2. Try to get Supabase session
     const { data: { session } } = await supabase.auth.getSession().catch(() => ({ data: { session: null } }));
 
     if (session?.user) {
@@ -36,14 +72,14 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ success: true, customer });
     }
 
-    // 2. Fetch latest active customer and sync with Supabase customers table
+    // 3. Fetch latest active customer and sync with Supabase customers table
     const active = getActiveSessionCustomer();
     if (active?.email) {
       try {
         const { data: dbCustomer } = await supabase
           .from('customers')
           .select('*')
-          .eq('email', active.email.toLowerCase())
+          .ilike('email', active.email.toLowerCase())
           .maybeSingle();
 
         if (dbCustomer) {

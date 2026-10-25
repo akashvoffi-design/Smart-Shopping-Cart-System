@@ -26,8 +26,8 @@ class TestGroceryDetectionAndCart(unittest.TestCase):
         cls.nextjs_url = "http://localhost:3000"
         cls.products_json_path = PROJECT_ROOT / "src" / "data" / "products.json"
 
-    def test_01_custom_model_loaded_and_12_classes_active(self):
-        """Verify the vision service has loaded custom-trained best.pt with 12 grocery classes."""
+    def test_01_custom_model_loaded_and_34_classes_active(self):
+        """Verify the vision service has loaded custom-trained YOLO11n best.pt with 34 grocery classes."""
         req = urllib.request.Request(f"{self.vision_url}/status")
         with urllib.request.urlopen(req, timeout=3) as res:
             self.assertEqual(res.status, 200)
@@ -36,14 +36,19 @@ class TestGroceryDetectionAndCart(unittest.TestCase):
         self.assertTrue(data.get("model_loaded"))
         self.assertTrue(data.get("is_custom_trained"))
         self.assertEqual(data.get("model_name"), "best.pt")
-        self.assertGreaterEqual(data.get("total_classes"), 12)
+        self.assertEqual(data.get("model_architecture"), "YOLO11n (Ultralytics 8.4+)")
+        self.assertEqual(data.get("total_classes"), 34)
         classes = data.get("classes", [])
-        self.assertIn("chips_packet", classes)
-        self.assertIn("biscuit_packet", classes)
-        self.assertIn("water_bottle", classes)
-        self.assertIn("dahi_cup", classes)
+        self.assertIn("Amul-Butter", classes)
+        self.assertIn("maggi", classes)
+        self.assertIn("lays", classes)
+        self.assertIn("kurkure", classes)
+        self.assertIn("Bisleri-water", classes)
         self.assertIn("broccoli", classes)
-        self.assertIn("apple", classes)
+        self.assertIn("Apple", classes)
+        self.assertIn("Banana", classes)
+        self.assertIn("pepsi", classes)
+        self.assertIn("sprite", classes)
 
     def test_02_inference_detects_grocery_with_normalized_boxes(self):
         """Verify inference on a test frame returns detections with normalized bounding boxes and confidence."""

@@ -7,9 +7,11 @@ const VISION_SERVICE_URL = process.env.VISION_SERVICE_URL || 'http://127.0.0.1:8
 export async function GET() {
   const modelsDir = path.join(process.cwd(), 'models');
   const customWeightsPath = path.join(modelsDir, 'best.pt');
-  const fallbackWeightsPath = path.join(modelsDir, 'yolo26s.pt');
+  const rootWeightsPath = path.join(process.cwd(), 'best.pt');
+  const fallbackWeightsPath = path.join(modelsDir, 'yolo11n.pt');
 
-  const hasCustomWeights = fs.existsSync(customWeightsPath);
+  const hasCustomWeights = fs.existsSync(customWeightsPath) || fs.existsSync(rootWeightsPath);
+  const activeWeightsPath = fs.existsSync(customWeightsPath) ? customWeightsPath : rootWeightsPath;
   const hasFallbackWeights = fs.existsSync(fallbackWeightsPath);
 
   // Attempt to check live Python FastAPI vision service
@@ -39,17 +41,17 @@ export async function GET() {
   return NextResponse.json({
     status: 'offline_or_starting',
     python_service_online: false,
-    service: 'SmartCart AI YOLO26s Vision Service',
+    service: 'SmartCart AI YOLO11n Vision Service',
     model_loaded: false,
-    model_name: hasCustomWeights ? 'best.pt' : hasFallbackWeights ? 'yolo26s.pt' : null,
+    model_name: hasCustomWeights ? 'best.pt' : hasFallbackWeights ? 'yolo11n.pt' : null,
     is_custom_trained: hasCustomWeights,
-    model_architecture: 'YOLO26-Small (Ultralytics)',
+    model_architecture: 'YOLO11n (Ultralytics)',
     custom_weights_available: hasCustomWeights,
-    custom_weights_path: customWeightsPath,
+    custom_weights_path: activeWeightsPath,
     endpoint_url: VISION_SERVICE_URL,
     notes: hasCustomWeights
-      ? 'Custom weights best.pt (fine-tuned from YOLO26s) found in models/. Start Python service: python -m uvicorn services.vision_service:app --port 8000'
-      : 'Official pretrained weights (yolo26s.pt) ready. Start Python service: python -m uvicorn services.vision_service:app --port 8000',
-    help: 'Run `python -m uvicorn services.vision_service:app --port 8000` to start real-time YOLO26s inference.',
+      ? 'Custom trained weights best.pt (YOLO11n, 34 grocery classes) ready. Start Python service: python -m uvicorn services.vision_service:app --port 8000'
+      : 'Official pretrained weights (yolo11n.pt) ready. Start Python service: python -m uvicorn services.vision_service:app --port 8000',
+    help: 'Run `python -m uvicorn services.vision_service:app --port 8000` to start real-time YOLO11n inference.',
   });
 }

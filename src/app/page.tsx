@@ -72,7 +72,12 @@ export default function GroceryDashboard() {
     }
 
     // 2. Fetch customer account from backend
-    fetch('/api/customers')
+    const currentStoredEmail = typeof window !== 'undefined' ? localStorage.getItem('smartcart_user_email') : null;
+    const custFetchUrl = currentStoredEmail
+      ? `/api/customers?email=${encodeURIComponent(currentStoredEmail)}`
+      : '/api/customers';
+
+    fetch(custFetchUrl)
       .then((res) => res.json())
       .then((data) => {
         if (data.success && data.customer) {
@@ -359,7 +364,7 @@ export default function GroceryDashboard() {
       <CartHistoryModal
         isOpen={activeModal === 'history'}
         onClose={() => setActiveModal('none')}
-        customerEmail={customer.email}
+        customerEmail={customer.email || (typeof window !== 'undefined' ? localStorage.getItem('smartcart_user_email') || '' : '')}
         onStartNewCart={handleNewCartAccount}
         activeCartCode={activeCartCode}
       />

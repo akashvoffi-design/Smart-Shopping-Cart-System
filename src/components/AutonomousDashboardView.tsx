@@ -33,6 +33,7 @@ import {
   Sparkles,
   Undo2,
   Tag,
+  ShieldAlert,
 } from 'lucide-react';
 import GlassIcon, { GlassColor } from '@/components/GlassIcon';
 import { Product, CartSummary, CartItem, IoTTelemetry } from '@/types';
@@ -41,6 +42,8 @@ import { updateItemQuantity, removeItemFromCart, clearCart, isScanDebounced } fr
 import { iotSimulator } from '@/lib/iot-simulator';
 import { detectBarcodeInVideoFrame } from '@/lib/vision';
 import { mapVisionClassToProduct } from '@/lib/vision-catalog-mapper';
+import CameraObstructionOverlay from '@/components/CameraObstructionOverlay';
+import { analyzeVideoFrameForObstruction } from '@/lib/obstruction-detector';
 
 interface AutonomousDashboardViewProps {
   summary: CartSummary;
@@ -87,6 +90,16 @@ export default function AutonomousDashboardView({
   const [lockedBarcode, setLockedBarcode] = useState<string | null>(null);
   const [lockedProductName, setLockedProductName] = useState<string | null>(null);
   const [lastAddedProduct, setLastAddedProduct] = useState<Product | null>(null);
+
+  // Real-time camera obstruction states
+  const [isCameraObstructed, setIsCameraObstructed] = useState<boolean>(false);
+  const [isCameraRestored, setIsCameraRestored] = useState<boolean>(false);
+  const obstructionStartTimeRef = useRef<number | null>(null);
+  const consecutiveClearFramesRef = useRef<number>(0);
+  const wasPreviouslyObstructedRef = useRef<boolean>(false);
+  const restoredTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const obstructionCanvasRef = useRef<HTMLCanvasElement | null>(null);
+  const lastObstructionCheckTimeRef = useRef<number>(0);
 
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -251,7 +264,7 @@ export default function AutonomousDashboardView({
         setModelStatus({
           loaded: !!data.model_loaded,
           isCustom: !!data.is_custom_trained,
-          modelName: data.model_name || (data.is_custom_trained ? 'best.pt' : 'yolo26s.pt'),
+          modelName: data.model_name || (data.is_custom_trained ? 'best.pt' : 'yolo11n.pt'),
           serviceOnline: !!data.python_service_online,
           notes: data.notes,
         });
@@ -329,28 +342,28 @@ export default function AutonomousDashboardView({
         bracketStroke = '#f87171';
         pillBg = 'rgba(127, 29, 29, 0.94)';
         pillBorder = '#ef4444';
-        confText = `⚠️ ${mapped.product?.product_name || det.class_name} - Out of Stock`;
+        confText = `⚠️ ${mapped.product?.product_name || det.class_name} (MRP: ₹${mapped.product?.mrp.toFixed(0) ?? 0}) - Out of Stock`;
       } else if (isItemLocked) {
         boxStroke = '#10b981';
         boxShadow = 'rgba(16, 185, 129, 0.85)';
         bracketStroke = '#34d399';
         pillBg = 'rgba(6, 78, 59, 0.94)';
         pillBorder = '#34d399';
-        confText = `✓ ${mapped.product?.product_name || det.class_name} ${(det.confidence * 100).toFixed(0)}% (In Cart)`;
+        confText = `✓ ${mapped.product?.product_name || det.class_name} • MRP ₹${mapped.product?.mrp.toFixed(0) ?? 0} • ${mapped.product?.weight_g ?? 100}g (In Cart)`;
       } else if (mapped.product && stockStatus && stockStatus.in_stock) {
         boxStroke = '#38bdf8';
         boxShadow = 'rgba(56, 189, 248, 0.85)';
         bracketStroke = '#0284c7';
         pillBg = 'rgba(15, 23, 42, 0.90)';
         pillBorder = '#38bdf8';
-        confText = `${mapped.product.product_name} ${(det.confidence * 100).toFixed(0)}% (${stockStatus.stock_quantity} left)`;
+        confText = `${mapped.product.product_name} • MRP ₹${mapped.product.mrp.toFixed(0)} • ${mapped.product.weight_g}g (${(det.confidence * 100).toFixed(0)}%)`;
       } else {
         boxStroke = '#f59e0b';
         boxShadow = 'rgba(245, 158, 11, 0.80)';
         bracketStroke = '#fbbf24';
         pillBg = 'rgba(120, 53, 15, 0.92)';
         pillBorder = '#f59e0b';
-        confText = `Product not recognized (${(det.confidence * 100).toFixed(0)}%)`;
+        confText = `${det.class_name} (${(det.confidence * 100).toFixed(0)}%)`;
       }
 
       // Glowing bounding box
@@ -487,6 +500,11 @@ export default function AutonomousDashboardView({
     multiItemTrackerRef.current.stabilityMap.clear();
     setLockedBarcode(null);
     setLockedProductName(null);
+    setIsCameraObstructed(false);
+    setIsCameraRestored(false);
+    obstructionStartTimeRef.current = null;
+    wasPreviouslyObstructedRef.current = false;
+    if (restoredTimeoutRef.current) clearTimeout(restoredTimeoutRef.current);
     setCameraActive(false);
     setVideoResolution(null);
     setMeasuredFPS(0);
@@ -549,6 +567,58 @@ export default function AutonomousDashboardView({
         }
       }
 
+      // 1.5. Real-Time Camera Obstruction Detection (Lightweight 64x48 frame analysis)
+      let isCurrentlyBlocked = isCameraObstructed;
+      if (now - lastObstructionCheckTimeRef.current >= 100) {
+        lastObstructionCheckTimeRef.current = now;
+        if (videoRef.current && videoRef.current.readyState >= 2) {
+          const analysis = analyzeVideoFrameForObstruction(videoRef.current, obstructionCanvasRef.current || undefined);
+          if (analysis.isObstructed) {
+            consecutiveClearFramesRef.current = 0;
+            if (obstructionStartTimeRef.current === null) {
+              obstructionStartTimeRef.current = now;
+            } else {
+              const elapsed = now - obstructionStartTimeRef.current;
+              // If obstruction remains continuous for 2 seconds (2000ms), trigger warning alert!
+              if (elapsed >= 2000) {
+                isCurrentlyBlocked = true;
+                if (!isCameraObstructed) {
+                  setIsCameraObstructed(true);
+                  wasPreviouslyObstructedRef.current = true;
+                  clearCanvas();
+                  setStatusMessage('⚠️ Camera Blocked: Your camera view is obstructed. Remove hand or object covering camera to continue.');
+                }
+              }
+            }
+          } else {
+            // View is clear!
+            consecutiveClearFramesRef.current++;
+            // Require 3 consecutive clear frames (~300ms) to confirm view is restored
+            if (consecutiveClearFramesRef.current >= 3) {
+              obstructionStartTimeRef.current = null;
+              if (wasPreviouslyObstructedRef.current) {
+                isCurrentlyBlocked = false;
+                setIsCameraObstructed(false);
+                wasPreviouslyObstructedRef.current = false;
+                setIsCameraRestored(true);
+                setStatusMessage("✓ Camera View Restored: You're all set! Product scanning has resumed.");
+                if (restoredTimeoutRef.current) clearTimeout(restoredTimeoutRef.current);
+                restoredTimeoutRef.current = setTimeout(() => {
+                  setIsCameraRestored(false);
+                }, 3500);
+              }
+            }
+          }
+        }
+      }
+
+      // If camera view is obstructed, suspend new barcode and YOLO detections!
+      if (isCurrentlyBlocked) {
+        clearCanvas();
+        animId = requestAnimationFrame(scanLoop);
+        return;
+      }
+
       // 2. Run barcode detection at 140ms interval
       if (now - lastInferenceTimeRef.current >= 140) {
         lastInferenceTimeRef.current = now;
@@ -585,7 +655,7 @@ export default function AutonomousDashboardView({
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
                 image_base64: frameBase64,
-                confidence_threshold: 0.40,
+                confidence_threshold: 0.35,
                 iou_threshold: 0.45,
               }),
             })
@@ -636,16 +706,16 @@ export default function AutonomousDashboardView({
                         continue; // Already added and holding in front of camera
                       }
 
-                      itemsSummaryList.push(`${product.product_name} (${(det.confidence * 100).toFixed(0)}%)`);
+                      itemsSummaryList.push(`${product.product_name} • MRP ₹${product.mrp} • ${product.weight_g}g (${(det.confidence * 100).toFixed(0)}%)`);
 
-                      // Stability check: require 3 consistent frames before auto-adding to cart
-                      if (det.confidence >= 0.40) {
+                      // Stability check: require 2 consistent frames before auto-adding to cart
+                      if (det.confidence >= 0.35) {
                         const existing = multiItemTrackerRef.current.stabilityMap.get(barcode) || { count: 0, lastSeen: 0 };
                         existing.count += 1;
                         existing.lastSeen = Date.now();
                         multiItemTrackerRef.current.stabilityMap.set(barcode, existing);
 
-                        if (existing.count >= 3 && !addedAnyThisFrame) {
+                        if (existing.count >= 2 && !addedAnyThisFrame) {
                           // AUTOMATIC CART ADDITION EVENT!
                           const liveStock = checkProductStock(barcode);
                           if (liveStock.in_stock && liveStock.stock_quantity > 0) {
@@ -659,7 +729,7 @@ export default function AutonomousDashboardView({
                             setLastAddedProduct(product);
                             setIsSuccessFeedback(true);
                             setStatusMessage(
-                              `✓ Confirmed AI Vision: Added "${product.product_name}" (₹${product.selling_price.toFixed(2)}) to cart (+${product.weight_g || 100}g)`
+                              `✓ Confirmed AI Vision: Added "${product.product_name}" (MRP: ₹${product.mrp.toFixed(2)} | Price: ₹${product.selling_price.toFixed(2)} | Weight: ${product.weight_g || 100}g) to cart`
                             );
                             addedAnyThisFrame = true;
                             setTimeout(() => {
@@ -862,26 +932,46 @@ export default function AutonomousDashboardView({
               </span>
             </div>
 
-            {/* Live Model Status Pill */}
-            <div
-              className={`model-status-pill ${
-                modelStatus.isCustom
-                  ? 'model-status-custom'
-                  : modelStatus.serviceOnline
-                  ? 'model-status-fallback'
-                  : 'model-status-offline'
-              }`}
-              title={modelStatus.notes || (modelStatus.isCustom ? 'Custom grocery weights active' : 'Pretrained development fallback active')}
-            >
-              <Sparkles style={{ width: '13px', height: '13px' }} />
-              <span>
-                {modelStatus.isCustom
-                  ? 'Custom YOLO26s (best.pt)'
-                  : modelStatus.serviceOnline
-                  ? 'YOLO26s (Pretrained)'
-                  : 'YOLO26s Offline'}
-              </span>
-            </div>
+            {/* Real-time Scanning / Obstruction Status Pill */}
+            {cameraActive && (
+              <div
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  padding: '6px 14px',
+                  borderRadius: '9999px',
+                  background: isCameraObstructed
+                    ? 'rgba(254, 242, 242, 0.95)'
+                    : 'rgba(236, 253, 245, 0.95)',
+                  border: isCameraObstructed
+                    ? '1.5px solid rgba(239, 68, 68, 0.6)'
+                    : '1.5px solid rgba(16, 185, 129, 0.6)',
+                  color: isCameraObstructed ? '#dc2626' : '#059669',
+                  fontSize: '12px',
+                  fontWeight: 700,
+                  boxShadow: isCameraObstructed
+                    ? '0 4px 14px rgba(239, 68, 68, 0.25)'
+                    : '0 4px 14px rgba(16, 185, 129, 0.25)',
+                  backdropFilter: 'blur(12px)',
+                  transition: 'all 0.25s ease',
+                }}
+              >
+                <span
+                  style={{
+                    width: '8px',
+                    height: '8px',
+                    borderRadius: '50%',
+                    background: isCameraObstructed ? '#ef4444' : '#10b981',
+                    boxShadow: isCameraObstructed
+                      ? '0 0 10px #ef4444'
+                      : '0 0 10px #10b981',
+                    animation: isCameraObstructed ? 'pulse 1s infinite' : 'none',
+                  }}
+                />
+                <span>{isCameraObstructed ? 'Camera Blocked' : 'Scanning Products...'}</span>
+              </div>
+            )}
           </div>
 
           {/* Camera device selector & settings (Glassmorphic pill on right) */}
@@ -941,19 +1031,89 @@ export default function AutonomousDashboardView({
                   className="camera-video-feed"
                 />
 
-                {/* Real-time YOLO Bounding Boxes Canvas Overlay */}
-                <canvas
-                  ref={overlayCanvasRef}
-                  className="detection-overlay-canvas"
+                {/* Real-time Camera Obstruction Warning & Restoration Overlay */}
+                <CameraObstructionOverlay
+                  isObstructed={isCameraObstructed}
+                  isRestored={isCameraRestored}
                 />
 
+                {/* Floating Bottom Action Controls (Prominently visible with high z-index and frosted pill styling) */}
+                <div
+                  style={{
+                    position: 'absolute',
+                    bottom: '22px',
+                    left: '50%',
+                    transform: 'translateX(-50%)',
+                    zIndex: 35,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '12px',
+                    background: 'rgba(15, 23, 42, 0.72)',
+                    backdropFilter: 'blur(16px)',
+                    WebkitBackdropFilter: 'blur(16px)',
+                    border: '1.5px solid rgba(255, 255, 255, 0.3)',
+                    padding: '8px 14px',
+                    borderRadius: '100px',
+                    boxShadow: '0 12px 32px rgba(0, 0, 0, 0.35), 0 2px 8px rgba(0, 0, 0, 0.2)',
+                  }}
+                >
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (isCameraObstructed) {
+                        setIsCameraObstructed(false);
+                        setIsCameraRestored(true);
+                        setTimeout(() => setIsCameraRestored(false), 3500);
+                      } else {
+                        setIsCameraObstructed(true);
+                        clearCanvas();
+                      }
+                    }}
+                    style={{
+                      background: isCameraObstructed ? 'rgba(239, 68, 68, 0.3)' : 'rgba(255, 255, 255, 0.14)',
+                      border: isCameraObstructed ? '1px solid rgba(239, 68, 68, 0.6)' : '1px solid rgba(255, 255, 255, 0.3)',
+                      color: '#ffffff',
+                      borderRadius: '100px',
+                      padding: '8px 18px',
+                      fontSize: '12.5px',
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '7px',
+                      transition: 'all 0.2s ease',
+                      whiteSpace: 'nowrap',
+                    }}
+                    title="Toggle simulated obstruction test"
+                  >
+                    <ShieldAlert style={{ width: '15px', height: '15px', color: '#f59e0b' }} />
+                    <span>{isCameraObstructed ? 'Clear Obstruction' : 'Test Blocked Alert'}</span>
+                  </button>
 
-
-                {/* Floating Turn Off Camera Action */}
-                <button onClick={stopCamera} className="camera-toggle-pill-btn camera-off-pill-btn">
-                  <CameraOff style={{ width: '15px', height: '15px' }} />
-                  Turn off camera
-                </button>
+                  <button
+                    type="button"
+                    onClick={stopCamera}
+                    style={{
+                      background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
+                      border: '1.5px solid rgba(255, 255, 255, 0.45)',
+                      color: '#ffffff',
+                      borderRadius: '100px',
+                      padding: '8px 20px',
+                      fontSize: '12.5px',
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '7px',
+                      boxShadow: '0 4px 14px rgba(239, 68, 68, 0.45)',
+                      transition: 'all 0.2s ease',
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    <CameraOff style={{ width: '15px', height: '15px' }} />
+                    <span>Turn off camera</span>
+                  </button>
+                </div>
               </div>
             ) : (
               <div className="camera-inactive-container">

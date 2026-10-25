@@ -41,21 +41,31 @@ export default function CartHistoryModal({
 
   const activeEmail = (
     customerEmail ||
-    (typeof window !== 'undefined' ? localStorage.getItem('smartcart_user_email') || 'akash@gmail.com' : 'akash@gmail.com')
+    (typeof window !== 'undefined' ? localStorage.getItem('smartcart_user_email') || '' : '')
   ).trim().toLowerCase();
 
   const fetchHistory = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`/api/cart/history?email=${encodeURIComponent(activeEmail)}`);
+      const emailToQuery = (
+        customerEmail ||
+        (typeof window !== 'undefined' ? localStorage.getItem('smartcart_user_email') || '' : '')
+      ).trim().toLowerCase();
+
+      // If an email exists, user is authenticated
+      if (emailToQuery) {
+        setIsAuthenticated(true);
+      }
+
+      const res = await fetch(`/api/cart/history?email=${encodeURIComponent(emailToQuery)}`);
       const data = await res.json();
 
       if (!res.ok || !data.success) {
         throw new Error(data.error || 'Failed to fetch purchase history from Supabase.');
       }
 
-      setIsAuthenticated(data.authenticated !== false);
+      setIsAuthenticated(data.authenticated !== false || Boolean(emailToQuery));
       setHistory(Array.isArray(data.history) ? data.history : []);
     } catch (err: unknown) {
       console.error('[CartHistoryModal] Fetch error:', err);
@@ -63,7 +73,7 @@ export default function CartHistoryModal({
     } finally {
       setLoading(false);
     }
-  }, [activeEmail]);
+  }, [customerEmail]);
 
   const handleDownload = async (cart: CartAccountSession) => {
     try {
@@ -211,6 +221,11 @@ export default function CartHistoryModal({
               <h2 style={{ fontSize: '22px', fontWeight: 800, letterSpacing: '-0.02em', margin: 0, textShadow: '0 1px 2px rgba(0,0,0,0.1)' }}>
                 Cart & Order History
               </h2>
+              {activeEmail && (
+                <div style={{ fontSize: '12px', color: '#e0e7ff', marginTop: '3px', fontWeight: 600 }}>
+                  Account: {activeEmail}
+                </div>
+              )}
             </div>
           </div>
 
@@ -354,7 +369,7 @@ export default function CartHistoryModal({
                 Sign in to your SmartCart account to sync and view your secure, permanent purchase history from Supabase.
               </p>
               <Link
-                href="/auth"
+                href="/login"
                 onClick={onClose}
                 style={{
                   display: 'inline-flex',

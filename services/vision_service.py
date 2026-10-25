@@ -1,7 +1,7 @@
 """
 SmartCart AI - Real-Time YOLO Grocery Detection Microservice
-FastAPI backend for Ultralytics YOLO26s inference on live video frames.
-Supports custom-trained weights (models/best.pt) and official pretrained checkpoint (models/yolo26s.pt).
+FastAPI backend for Ultralytics YOLO11n inference on live video frames.
+Supports custom-trained weights (models/best.pt / best.pt) and official pretrained checkpoint (models/yolo11n.pt).
 """
 
 import os
@@ -17,13 +17,13 @@ from pydantic import BaseModel
 from PIL import Image
 import numpy as np
 
-# Ultralytics YOLO26
+# Ultralytics YOLO11
 from ultralytics import YOLO
 
 app = FastAPI(
-    title="SmartCart AI YOLO26s Vision Microservice",
-    description="Real-time grocery object detection service powered by Ultralytics YOLO26s.",
-    version="1.0.0",
+    title="SmartCart AI YOLO11n Vision Microservice",
+    description="Real-time grocery object detection service powered by Ultralytics YOLO11n.",
+    version="1.1.0",
 )
 
 # Enable CORS for Next.js app running at localhost:3000
@@ -39,7 +39,8 @@ app.add_middleware(
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 MODELS_DIR = PROJECT_ROOT / "models"
 CUSTOM_MODEL_PATH = MODELS_DIR / "best.pt"
-FALLBACK_MODEL_PATH = MODELS_DIR / "yolo26s.pt"
+ROOT_MODEL_PATH = PROJECT_ROOT / "best.pt"
+FALLBACK_MODEL_PATH = MODELS_DIR / "yolo11n.pt"
 
 current_model: Optional[YOLO] = None
 current_model_path: Optional[Path] = None
@@ -51,8 +52,9 @@ def load_detection_model(preferred_path: Optional[str] = None):
     """
     Loads YOLO detection model:
     1. Custom path if provided / env YOLO_MODEL_PATH
-    2. models/best.pt (Custom trained weights fine-tuned from YOLO26s)
-    3. models/yolo26s.pt (Official Ultralytics YOLO26s pretrained checkpoint)
+    2. models/best.pt (Custom trained weights fine-tuned with YOLO11n)
+    3. best.pt (in project root)
+    4. models/yolo11n.pt (Official Ultralytics YOLO11n pretrained checkpoint)
     """
     global current_model, current_model_path, is_custom_model, model_classes
 
@@ -70,31 +72,34 @@ def load_detection_model(preferred_path: Optional[str] = None):
     elif CUSTOM_MODEL_PATH.exists():
         target_path = CUSTOM_MODEL_PATH
         custom_flag = True
+    elif ROOT_MODEL_PATH.exists():
+        target_path = ROOT_MODEL_PATH
+        custom_flag = True
     elif FALLBACK_MODEL_PATH.exists():
         target_path = FALLBACK_MODEL_PATH
         custom_flag = False
     else:
-        # Download or load yolo26s directly
+        # Download or load yolo11n directly
         target_path = FALLBACK_MODEL_PATH
         custom_flag = False
 
-    print(f"[Vision Service] Loading YOLO26s model from: {target_path} (is_custom={custom_flag})")
+    print(f"[Vision Service] Loading YOLO11n model from: {target_path} (is_custom={custom_flag})")
     try:
         model = YOLO(str(target_path))
         current_model = model
         current_model_path = target_path
         is_custom_model = custom_flag
         model_classes = {int(k): str(v) for k, v in model.names.items()}
-        print(f"[Vision Service] Successfully loaded '{target_path.name}' with {len(model_classes)} classes.")
+        print(f"[Vision Service] Successfully loaded '{target_path.name}' with {len(model_classes)} classes: {list(model_classes.values())[:8]}...")
         return True
     except Exception as e:
         print(f"[Vision Service] Error loading model from {target_path}: {e}")
-        # Final emergency fallback to yolo26s.pt via ultralytics auto-download
+        # Final emergency fallback to yolo11n.pt via ultralytics auto-download
         try:
-            print("[Vision Service] Falling back to default yolo26s.pt...")
-            model = YOLO("yolo26s.pt")
+            print("[Vision Service] Falling back to default yolo11n.pt...")
+            model = YOLO("yolo11n.pt")
             current_model = model
-            current_model_path = Path("yolo26s.pt")
+            current_model_path = Path("yolo11n.pt")
             is_custom_model = False
             model_classes = {int(k): str(v) for k, v in model.names.items()}
             return True
@@ -148,7 +153,7 @@ class DetectionResponse(BaseModel):
 
 class Base64DetectRequest(BaseModel):
     image_base64: str
-    confidence_threshold: Optional[float] = 0.40
+    confidence_threshold: Optional[float] = 0.35
     iou_threshold: Optional[float] = 0.45
 
 
@@ -158,21 +163,21 @@ def get_service_status():
     """Returns vision service and model loading status."""
     return {
         "status": "online" if current_model is not None else "degraded",
-        "service": "SmartCart AI YOLO26s Vision Service",
+        "service": "SmartCart AI YOLO11n Vision Service",
         "model_loaded": current_model is not None,
-        "model_name": current_model_path.name if current_model_path else "yolo26s.pt",
+        "model_name": current_model_path.name if current_model_path else "yolo11n.pt",
         "model_path": str(current_model_path) if current_model_path else None,
         "is_custom_trained": is_custom_model,
-        "model_architecture": "YOLO26-Small (Ultralytics 8.4+)",
-        "pretrained_checkpoint": "yolo26s.pt",
+        "model_architecture": "YOLO11n (Ultralytics 8.4+)",
+        "pretrained_checkpoint": "yolo11n.pt",
         "total_classes": len(model_classes),
         "classes": list(model_classes.values()),
-        "custom_weights_available": CUSTOM_MODEL_PATH.exists(),
-        "custom_weights_path": str(CUSTOM_MODEL_PATH),
+        "custom_weights_available": CUSTOM_MODEL_PATH.exists() or ROOT_MODEL_PATH.exists(),
+        "custom_weights_path": str(CUSTOM_MODEL_PATH if CUSTOM_MODEL_PATH.exists() else ROOT_MODEL_PATH),
         "notes": (
-            "Custom weights (best.pt) fine-tuned from YOLO26s active for grocery classification."
+            f"Custom YOLO11n weights ({current_model_path.name if current_model_path else 'best.pt'}) active with {len(model_classes)} grocery classes."
             if is_custom_model
-            else "Pretrained YOLO26s checkpoint (yolo26s.pt) active. To use custom weights, train your dataset and place best.pt in models/."
+            else "Pretrained YOLO11n checkpoint (yolo11n.pt) active."
         ),
     }
 
