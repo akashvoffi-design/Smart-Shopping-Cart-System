@@ -28,6 +28,7 @@ import {
 import GlassIcon from '@/components/GlassIcon';
 import { CartItem, Order, PaymentDetails, Product } from '@/types';
 import { getStoredCart, clearCart } from '@/lib/cart-store';
+import QRCode from 'qrcode';
 
 export default function CheckoutPage() {
   const router = useRouter();
@@ -40,6 +41,37 @@ export default function CheckoutPage() {
   const [linkedUpiId, setLinkedUpiId] = useState<string>('akash@okhdfcbank');
   const [showConfirmationPop, setShowConfirmationPop] = useState<boolean>(false);
   const [showFailurePop, setShowFailurePop] = useState<boolean>(false);
+  const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
+
+  const [merchantUpiId, setMerchantUpiId] = useState<string>(
+    process.env.NEXT_PUBLIC_MERCHANT_UPI_VPA || 'kash78532@okhdfcbank'
+  );
+
+  // Generate genuine scannable UPI QR code (YouPI-PG ISO Vector format)
+  const [qrSvgHtml, setQrSvgHtml] = useState<string | null>(null);
+
+  useEffect(() => {
+    const rawUri =
+      payment?.upi_uri ||
+      `upi://pay?pa=kash78532@okhdfcbank&pn=SmartCart%20AI%20Store&am=${(order?.grand_total || 30.0).toFixed(2)}&cu=INR&tn=Order%20${order?.order_number || 'SC-30'}&tr=${order?.order_number || 'SC-30'}`;
+    
+    QRCode.toString(rawUri, {
+      type: 'svg',
+      width: 140,
+      margin: 1,
+      color: {
+        dark: '#ffffff',
+        light: '#00000000',
+      },
+      errorCorrectionLevel: 'M',
+    })
+      .then((svgString) => {
+        setQrSvgHtml(svgString);
+      })
+      .catch((err) => {
+        console.error('Failed to generate vector UPI QR:', err);
+      });
+  }, [payment?.upi_uri, order?.grand_total, order?.order_number]);
 
   // Auto-dismiss confirmation pop after 3 seconds
   useEffect(() => {
@@ -180,7 +212,7 @@ export default function CheckoutPage() {
             amount: 30.0,
             provider: 'upi',
             status: 'pending',
-            upi_uri: 'upi://pay?pa=akash@okhdfcbank&pn=SmartCart&am=30',
+            upi_uri: `upi://pay?pa=kash78532@okhdfcbank&pn=SmartCart%20AI%20Store&am=30.00&cu=INR&tn=Order%20${mockOrderNumber}&tr=${mockOrderNumber}`,
             created_at: new Date().toISOString(),
           });
         }
@@ -938,43 +970,67 @@ export default function CheckoutPage() {
                     }}
                   />
 
-                  {/* Stylized QR Code matching the reference design */}
-                  <svg
-                    width="106"
-                    height="106"
-                    viewBox="0 0 106 106"
-                    fill="none"
-                    xmlns="http://www.w3.org/2000/svg"
-                    style={{ zIndex: 1, filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.5))' }}
-                  >
-                    {/* Top Left Marker */}
-                    <rect x="6" y="6" width="36" height="36" rx="10" stroke="#ffffff" strokeWidth="7" fill="none" />
-                    <circle cx="24" cy="24" r="6.5" fill="#ffffff" />
-
-                    {/* Top Right Marker */}
-                    <rect x="64" y="6" width="36" height="36" rx="10" stroke="#ffffff" strokeWidth="7" fill="none" />
-                    <circle cx="82" cy="24" r="6.5" fill="#ffffff" />
-
-                    {/* Bottom Left Marker */}
-                    <rect x="6" y="64" width="36" height="36" rx="10" stroke="#ffffff" strokeWidth="7" fill="none" />
-                    <circle cx="24" cy="82" r="6.5" fill="#ffffff" />
-
-                    {/* Bottom Right Distinctive Curved Glyph */}
-                    <path
-                      d="M 64 64 H 82 A 16 16 0 0 1 98 80 V 98"
-                      stroke="#ffffff"
-                      strokeWidth="7"
-                      strokeLinecap="round"
-                      fill="none"
+                  {/* Dynamic Scannable Vector QR Code or Stylized Fallback */}
+                  {qrSvgHtml ? (
+                    <a
+                      href={
+                        payment?.upi_uri ||
+                        `upi://pay?pa=kash78532@okhdfcbank&pn=SmartCart%20AI%20Store&am=${(order?.grand_total || 30.0).toFixed(2)}&cu=INR&tn=Order%20${order?.order_number || 'SC-30'}&tr=${order?.order_number || 'SC-30'}`
+                      }
+                      title="Click or scan to pay with any UPI app"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{
+                        zIndex: 2,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        cursor: 'pointer',
+                        textDecoration: 'none',
+                        width: '136px',
+                        height: '136px',
+                      }}
+                      dangerouslySetInnerHTML={{ __html: qrSvgHtml }}
                     />
-                    <circle cx="82" cy="82" r="6.5" fill="#ffffff" />
+                  ) : (
+                    /* Stylized QR Code fallback matching the reference design */
+                    <svg
+                      width="106"
+                      height="106"
+                      viewBox="0 0 106 106"
+                      fill="none"
+                      xmlns="http://www.w3.org/2000/svg"
+                      style={{ zIndex: 1, filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.5))' }}
+                    >
+                      {/* Top Left Marker */}
+                      <rect x="6" y="6" width="36" height="36" rx="10" stroke="#ffffff" strokeWidth="7" fill="none" />
+                      <circle cx="24" cy="24" r="6.5" fill="#ffffff" />
 
-                    {/* Center dots */}
-                    <circle cx="53" cy="38" r="4" fill="#ffffff" />
-                    <circle cx="53" cy="68" r="4" fill="#ffffff" />
-                    <circle cx="38" cy="53" r="3.5" fill="#ffffff" />
-                    <circle cx="68" cy="53" r="3.5" fill="#ffffff" />
-                  </svg>
+                      {/* Top Right Marker */}
+                      <rect x="64" y="6" width="36" height="36" rx="10" stroke="#ffffff" strokeWidth="7" fill="none" />
+                      <circle cx="82" cy="24" r="6.5" fill="#ffffff" />
+
+                      {/* Bottom Left Marker */}
+                      <rect x="6" y="64" width="36" height="36" rx="10" stroke="#ffffff" strokeWidth="7" fill="none" />
+                      <circle cx="24" cy="82" r="6.5" fill="#ffffff" />
+
+                      {/* Bottom Right Distinctive Curved Glyph */}
+                      <path
+                        d="M 64 64 H 82 A 16 16 0 0 1 98 80 V 98"
+                        stroke="#ffffff"
+                        strokeWidth="7"
+                        strokeLinecap="round"
+                        fill="none"
+                      />
+                      <circle cx="82" cy="82" r="6.5" fill="#ffffff" />
+
+                      {/* Center dots */}
+                      <circle cx="53" cy="38" r="4" fill="#ffffff" />
+                      <circle cx="53" cy="68" r="4" fill="#ffffff" />
+                      <circle cx="38" cy="53" r="3.5" fill="#ffffff" />
+                      <circle cx="68" cy="53" r="3.5" fill="#ffffff" />
+                    </svg>
+                  )}
 
                   {/* Order & Price Info at bottom of QR */}
                   <div
@@ -993,16 +1049,29 @@ export default function CheckoutPage() {
                   </div>
                 </div>
 
-                <span
-                  style={{
-                    fontSize: '13px',
-                    fontWeight: 600,
-                    color: '#64748b',
-                    marginTop: '8px',
-                  }}
-                >
-                  Scan to Pay (Demo)
-                </span>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginTop: '8px' }}>
+                  <a
+                    href={
+                      payment?.upi_uri ||
+                      `upi://pay?pa=kash78532@okhdfcbank&pn=SmartCart%20AI%20Store&am=${(order?.grand_total || 30.0).toFixed(2)}&cu=INR&tn=Order%20${order?.order_number || 'SC-30'}&tr=${order?.order_number || 'SC-30'}`
+                    }
+                    style={{
+                      fontSize: '13px',
+                      fontWeight: 700,
+                      color: '#2563eb',
+                      textDecoration: 'none',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '5px',
+                    }}
+                  >
+                    <span>Scan or Tap to Pay via UPI</span>
+                    <span style={{ fontSize: '11px' }}>↗</span>
+                  </a>
+                  <span style={{ fontSize: '11px', color: '#94a3b8', marginTop: '2px' }}>
+                    GPay &bull; PhonePe &bull; Paytm &bull; CRED
+                  </span>
+                </div>
               </div>
             </div>
 

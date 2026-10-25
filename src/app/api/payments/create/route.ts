@@ -17,9 +17,13 @@ export async function POST(request: NextRequest) {
     // Check if live provider keys exist in environment
     const hasLiveProvider = Boolean(process.env.RAZORPAY_KEY_ID && process.env.RAZORPAY_KEY_SECRET);
 
-    // Explicit non-live demo mode
-    const provider = hasLiveProvider ? 'razorpay' : 'demo';
-    const upiUri = `upi://pay?pa=smartcart.demo@okhdfcbank&pn=SmartCart%20Test%20Store&am=${parsedAmount.toFixed(2)}&cu=INR&tr=${order_number || order_id}`;
+    // Configure merchant receiver VPA (from env or defaults)
+    const merchantVpa = process.env.NEXT_PUBLIC_MERCHANT_UPI_VPA || process.env.MERCHANT_UPI_VPA || 'kash78532@okhdfcbank';
+    const merchantName = process.env.NEXT_PUBLIC_MERCHANT_NAME || process.env.MERCHANT_NAME || 'SmartCart AI Store';
+    const encodedMerchantName = encodeURIComponent(merchantName);
+
+    // Standard NPCI UPI URI Specification matching YouPI PG engine
+    const upiUri = `upi://pay?pa=${merchantVpa}&pn=${encodedMerchantName}&am=${parsedAmount.toFixed(2)}&cu=INR&tn=Order%20${order_number || order_id}&tr=${order_number || order_id}`;
 
     const payment: PaymentDetails = {
       id: `pay_${Date.now()}`,

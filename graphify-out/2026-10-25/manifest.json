@@ -38,15 +38,15 @@
   },
   "services/vision_service.py": {
     "mtime": 1792855275.579552,
-    "seen": 1792855793.7322705,
+    "seen": 1792895101.7220037,
     "ast_hash": "1b558338007a6772372780e43bcf6b74",
-    "semantic_hash": ""
+    "semantic_hash": "1b558338007a6772372780e43bcf6b74"
   },
   "src/app/api/cart/history/route.ts": {
-    "mtime": 1792380617.8471735,
-    "seen": 1792809207.2480955,
-    "ast_hash": "af06259cb05f4db71bd8b8bad5085f33",
-    "semantic_hash": "af06259cb05f4db71bd8b8bad5085f33"
+    "mtime": 1792861782.7358484,
+    "seen": 1792895101.7220056,
+    "ast_hash": "ba9c6ec426139b10fa89cf4c23342d8e",
+    "semantic_hash": "ba9c6ec426139b10fa89cf4c23342d8e"
   },
   "src/app/api/cart/new/route.ts": {
     "mtime": 1792232161.6927667,
@@ -67,10 +67,10 @@
     "semantic_hash": "526f0ade003c27e37e29669cf096e10b"
   },
   "src/app/api/customers/route.ts": {
-    "mtime": 1792811851.2798727,
-    "seen": 1792855793.7325394,
-    "ast_hash": "b93bdbb91d9d661cf52c04f9eb1d9cdf",
-    "semantic_hash": "b93bdbb91d9d661cf52c04f9eb1d9cdf"
+    "mtime": 1792861459.7103772,
+    "seen": 1792895101.7225068,
+    "ast_hash": "b0d2b40acf497570e684beae25868d06",
+    "semantic_hash": "b0d2b40acf497570e684beae25868d06"
   },
   "src/app/api/iot/weight/route.ts": {
     "mtime": 1792212789.1100202,
@@ -122,9 +122,9 @@
   },
   "src/app/api/vision/status/route.ts": {
     "mtime": 1792855303.709932,
-    "seen": 1792855793.7332644,
+    "seen": 1792895101.72378,
     "ast_hash": "c9b1c1b0b781528f8a17d4db1e53e3d5",
-    "semantic_hash": ""
+    "semantic_hash": "c9b1c1b0b781528f8a17d4db1e53e3d5"
   },
   "src/app/auth/page.tsx": {
     "mtime": 1792811851.2339542,
@@ -133,8 +133,8 @@
     "semantic_hash": "7e0abe5b219cc4281d79c5d603ba9a68"
   },
   "src/app/checkout/page.tsx": {
-    "mtime": 1792811851.2818184,
-    "seen": 1792855793.733268,
+    "mtime": 1792859113.4010296,
+    "seen": 1792895101.7239323,
     "ast_hash": "643d1034115155d1cd189336df524e66",
     "semantic_hash": "643d1034115155d1cd189336df524e66"
   },
@@ -151,16 +151,16 @@
     "semantic_hash": "fa8b5b2744eb319fbaf763a9f3d44868"
   },
   "src/app/page.tsx": {
-    "mtime": 1792811851.2783725,
-    "seen": 1792855793.733436,
-    "ast_hash": "e0e71b7e8f8dc1fdcb2eb1744b8dfb8f",
-    "semantic_hash": "e0e71b7e8f8dc1fdcb2eb1744b8dfb8f"
+    "mtime": 1792861538.8398821,
+    "seen": 1792895101.7242432,
+    "ast_hash": "7e8720f612720ee81953aa93f40bd51e",
+    "semantic_hash": "7e8720f612720ee81953aa93f40bd51e"
   },
   "src/components/AutonomousDashboardView.tsx": {
-    "mtime": 1792855536.418627,
-    "seen": 1792855793.7334378,
-    "ast_hash": "83bec234427654840f1b8b2896e6433f",
-    "semantic_hash": ""
+    "mtime": 1792865023.6701317,
+    "seen": 1792895101.7242448,
+    "ast_hash": "dce5dd9c94006c681fd8976f2cf85345",
+    "semantic_hash": "dce5dd9c94006c681fd8976f2cf85345"
   },
   "src/components/BatteryPopover.tsx": {
     "mtime": 1792310995.1165118,
@@ -169,16 +169,16 @@
     "semantic_hash": "bfcce4f0d33b1372c79b720844a6fe0c"
   },
   "src/components/CameraScanner.tsx": {
-    "mtime": 1792382109.4756253,
-    "seen": 1792809207.2541673,
-    "ast_hash": "5df3a8966dbc1f5fe76efdfd48b36f3b",
-    "semantic_hash": "5df3a8966dbc1f5fe76efdfd48b36f3b"
+    "mtime": 1792865090.6079278,
+    "seen": 1792895101.7244296,
+    "ast_hash": "11597eee658ac69759333c09e52c1ce5",
+    "semantic_hash": "11597eee658ac69759333c09e52c1ce5"
   },
   "src/components/CartHistoryModal.tsx": {
-    "mtime": 1792811851.2808013,
-    "seen": 1792855793.7336156,
-    "ast_hash": "4c36b6449851d250c1c7e08a229c8cb0",
-    "semantic_hash": "4c36b6449851d250c1c7e08a229c8cb0"
+    "mtime": 1792861670.3463073,
+    "seen": 1792895101.724431,
+    "ast_hash": "ba89ee38f8e59e5bf3e2426ff77cd666",
+    "semantic_hash": "ba89ee38f8e59e5bf3e2426ff77cd666"
   },
   "src/components/CartList.tsx": {
     "mtime": 1792253787.0760865,
@@ -230,9 +230,9 @@
   },
   "src/components/ProductCatalogModal.tsx": {
     "mtime": 1792814844.4846344,
-    "seen": 1792855793.7340252,
+    "seen": 1792895101.725695,
     "ast_hash": "941b93c7a60399bb83c12a1c821b482e",
-    "semantic_hash": ""
+    "semantic_hash": "941b93c7a60399bb83c12a1c821b482e"
   },
   "src/components/WifiPopover.tsx": {
     "mtime": 1792311040.1950269,
@@ -241,10 +241,10 @@
     "semantic_hash": "9102f51296ef51c91ec893fcf87f1b16"
   },
   "src/lib/cart-store.ts": {
-    "mtime": 1792811851.2851508,
-    "seen": 1792855793.7341065,
-    "ast_hash": "8c23ac14f7ecd3eef1be252ef3354b45",
-    "semantic_hash": "8c23ac14f7ecd3eef1be252ef3354b45"
+    "mtime": 1792861277.551682,
+    "seen": 1792895101.7258437,
+    "ast_hash": "019cb4a3ab8c804daab3e2a349f9a46c",
+    "semantic_hash": "019cb4a3ab8c804daab3e2a349f9a46c"
   },
   "src/lib/customer-store.ts": {
     "mtime": 1792811851.2762587,
@@ -265,16 +265,16 @@
     "semantic_hash": "718dc5e9dcbc71f270f69963816685af"
   },
   "src/lib/products.ts": {
-    "mtime": 1792855379.538984,
-    "seen": 1792855793.7342687,
-    "ast_hash": "7d30c6279168f8ea41676e4a186e6925",
-    "semantic_hash": ""
+    "mtime": 1792857799.1107526,
+    "seen": 1792895101.7262802,
+    "ast_hash": "09905a4ba151d6d96dc60ab9df4c3e2a",
+    "semantic_hash": "09905a4ba151d6d96dc60ab9df4c3e2a"
   },
   "src/lib/vision-catalog-mapper.ts": {
     "mtime": 1792855419.907202,
-    "seen": 1792855793.7342699,
+    "seen": 1792895101.7262816,
     "ast_hash": "135c843cef9f7dfec8fff33163edcce6",
-    "semantic_hash": ""
+    "semantic_hash": "135c843cef9f7dfec8fff33163edcce6"
   },
   "src/lib/vision.ts": {
     "mtime": 1792311728.490731,
@@ -326,9 +326,9 @@
   },
   "src/utils/supabase/middleware.ts": {
     "mtime": 1792812371.4235091,
-    "seen": 1792855793.7346716,
+    "seen": 1792895101.7274716,
     "ast_hash": "19c65622f3f3db1b0991ad7b3269aee6",
-    "semantic_hash": ""
+    "semantic_hash": "19c65622f3f3db1b0991ad7b3269aee6"
   },
   "src/utils/supabase/server.ts": {
     "mtime": 1792213277.4488516,
@@ -344,15 +344,15 @@
   },
   "tests/test_grocery_detection_and_cart.py": {
     "mtime": 1792855566.5626822,
-    "seen": 1792855793.7348387,
+    "seen": 1792895101.7277696,
     "ast_hash": "31a86c733c9340e657a2dfc069b2fb90",
-    "semantic_hash": ""
+    "semantic_hash": "31a86c733c9340e657a2dfc069b2fb90"
   },
   "tests/test_vision_endpoints.py": {
     "mtime": 1792855582.7399278,
-    "seen": 1792855793.7348404,
+    "seen": 1792895101.7277708,
     "ast_hash": "db3cd91ac154cc659872872bddf53dca",
-    "semantic_hash": ""
+    "semantic_hash": "db3cd91ac154cc659872872bddf53dca"
   },
   "tests/test_vision_integration.py": {
     "mtime": 1792313350.6664903,
@@ -403,28 +403,28 @@
     "semantic_hash": "0cf97a81150d3b8904f285780896980d"
   },
   "SmartCart-AI.v1i.yolov11/data.yaml": {
-    "mtime": 1792854089.111318,
-    "seen": 1792855793.7314377,
-    "ast_hash": "a2c5451b198cf467768d45f4807db0e8",
-    "semantic_hash": ""
+    "mtime": 1792857683.1679976,
+    "seen": 1792895101.720775,
+    "ast_hash": "97439238c4265cee3105c37bed3b0b65",
+    "semantic_hash": "97439238c4265cee3105c37bed3b0b65"
   },
   "src/app/login/page.tsx": {
     "mtime": 1792812136.9117951,
-    "seen": 1792855793.7333531,
+    "seen": 1792895101.7240806,
     "ast_hash": "e2b594be15c5c847c52c2761107e1822",
-    "semantic_hash": ""
+    "semantic_hash": "e2b594be15c5c847c52c2761107e1822"
   },
   "supabase/migration_fix.sql": {
     "mtime": 1792380232.932796,
-    "seen": 1792855793.734752,
+    "seen": 1792895101.7276177,
     "ast_hash": "77a1f0a41cc8093aa3443eede747d7a4",
-    "semantic_hash": ""
+    "semantic_hash": "77a1f0a41cc8093aa3443eede747d7a4"
   },
   "supabase/schema.sql": {
     "mtime": 1792232578.987462,
-    "seen": 1792855793.7347536,
+    "seen": 1792895101.7276192,
     "ast_hash": "f09753045ec993a9cdfd7f5e279ff2d0",
-    "semantic_hash": ""
+    "semantic_hash": "f09753045ec993a9cdfd7f5e279ff2d0"
   },
   "README.md": {
     "mtime": 1792690804.4033654,
@@ -9239,5 +9239,29 @@
     "seen": 1792855793.7371497,
     "ast_hash": "c0f529f0aee7e357d52ee5e114a3db9a",
     "semantic_hash": ""
+  },
+  "src/components/CameraObstructionOverlay.tsx": {
+    "mtime": 1792862689.479733,
+    "seen": 1792895101.7244275,
+    "ast_hash": "816652cb2d39db7a280d818e1f0093f2",
+    "semantic_hash": "816652cb2d39db7a280d818e1f0093f2"
+  },
+  "src/lib/obstruction-detector.ts": {
+    "mtime": 1792862650.80563,
+    "seen": 1792895101.7261357,
+    "ast_hash": "d0f00c1634589c05492239b2c57afa60",
+    "semantic_hash": "d0f00c1634589c05492239b2c57afa60"
+  },
+  "training/add_images_to_dataset.py": {
+    "mtime": 1792857642.572029,
+    "seen": 1792895101.7279172,
+    "ast_hash": "466abdf3583d385c6a04acd03f9346aa",
+    "semantic_hash": "466abdf3583d385c6a04acd03f9346aa"
+  },
+  "training/train_yolo11n_finetune.py": {
+    "mtime": 1792857697.7865624,
+    "seen": 1792895101.7289495,
+    "ast_hash": "5b28888358997a84976e50949ba73798",
+    "semantic_hash": "5b28888358997a84976e50949ba73798"
   }
 }
