@@ -1,0 +1,14 @@
+path: C:/main file/my work/Smart Shopping Cart System/porject-IoT/SmartCart-AI.v1i.yolov11
+train: train/images
+val: valid/images
+test: test/images
+
+nc: 34
+names: ['Amul-Butter', 'Amul-masti', 'Apple', 'Banana', 'Bisleri-water', 'Britannaia chaeese spreadz', 'Britannaia cheese garlic', 'Britannaia fruit cake', 'Britannaia fruitBread', 'Britannaia whole wheatBread', 'Britannaia-Sandwich-Bread', 'Britannia-', 'back pepper', 'black pepper', 'britannia gobbles egg less fruit cake', 'broccoli', 'cabbage', 'carrot', 'cocaco', 'doughunut', 'green apple', 'kurkure', 'lays', 'light', 'maggi', 'milk mushroom', 'onion', 'onion stem', 'orange', 'parle-G', 'pepsi', 'potato', 'sprite', 'tomato']
+
+roboflow:
+  workspace: akash-v-pbbft
+  project: smartcart-ai-mbl26
+  version: 1
+  license: CC BY 4.0
+  url: https://universe.roboflow.com/akash-v-pbbft/smartcart-ai-mbl26/dataset/1

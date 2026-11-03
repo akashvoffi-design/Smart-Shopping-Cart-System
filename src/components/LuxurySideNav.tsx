@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { House, Plus, History } from 'lucide-react';
+import { House, Plus, History, Radio } from 'lucide-react';
 import GlassIcon from '@/components/GlassIcon';
 
 interface LuxurySideNavProps {
@@ -13,6 +13,7 @@ interface LuxurySideNavProps {
   onOpenHardwareConsole: () => void;
   onNewCartAccount?: () => void;
   onOpenHistory?: () => void;
+  onOpenUltrasonic?: () => void;
 }
 
 export default function LuxurySideNav({
@@ -24,6 +25,7 @@ export default function LuxurySideNav({
   onOpenHardwareConsole,
   onNewCartAccount,
   onOpenHistory,
+  onOpenUltrasonic,
 }: LuxurySideNavProps) {
   return (
     <aside className="left-dock-container">
@@ -62,7 +64,23 @@ export default function LuxurySideNav({
           />
         </button>
 
-        {/* 3. Cart & Orders History button - Purple glass tile matching reference */}
+        {/* 3. Ultrasonic Distance Sensor (HC-SR04) button - Cyan glass tile */}
+        <button
+          onClick={onOpenUltrasonic}
+          className={`circle-nav-btn ${activeView === 'ultrasonic' ? 'active' : ''}`}
+          title="ESP32 Ultrasonic Distance Monitor (HC-SR04)"
+          style={{ padding: 0, border: 'none', background: 'transparent' }}
+        >
+          <GlassIcon
+            icon={Radio}
+            color="cyan"
+            size={38}
+            active={activeView === 'ultrasonic'}
+            glow={activeView === 'ultrasonic'}
+          />
+        </button>
+
+        {/* 4. Cart & Orders History button - Purple glass tile matching reference */}
         <button
           onClick={onOpenHistory}
           className={`circle-nav-btn ${activeView === 'history' ? 'active' : ''}`}

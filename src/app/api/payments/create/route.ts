@@ -30,7 +30,7 @@ export async function POST(request: NextRequest) {
       order_id,
       order_number: order_number || `SC-${Date.now().toString().slice(-6)}`,
       amount: parsedAmount,
-      provider,
+      provider: body.provider || (hasLiveProvider ? 'razorpay' : 'upi_qr'),
       status: 'pending',
       correlation_id: correlationId,
       upi_uri: upiUri,

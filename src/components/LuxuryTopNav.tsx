@@ -15,12 +15,14 @@ import {
   Wifi,
   WifiOff,
   Wallet,
+  Radio,
 } from 'lucide-react';
 import { IoTTelemetry } from '@/types';
 import CustomerProfileModal, { CustomerData } from '@/components/CustomerProfileModal';
 import GlassIcon, { GlassColor } from '@/components/GlassIcon';
 import BatteryPopover from '@/components/BatteryPopover';
 import WifiPopover from '@/components/WifiPopover';
+import { useUltrasonicSensor } from '@/hooks/useUltrasonicSensor';
 
 interface LuxuryTopNavProps {
   telemetry: IoTTelemetry;
@@ -29,6 +31,7 @@ interface LuxuryTopNavProps {
   onOpenScanner?: () => void;
   onOpenHardwareConsole?: () => void;
   onOpenCatalogue?: () => void;
+  onOpenUltrasonic?: () => void;
   userName?: string;
   upiId?: string;
   customer?: CustomerData;
@@ -43,12 +46,14 @@ export default function LuxuryTopNav({
   onOpenScanner,
   onOpenHardwareConsole,
   onOpenCatalogue,
+  onOpenUltrasonic,
   userName = 'Akash v',
   upiId,
   customer,
   onCustomerUpdated,
   cartCode = '#SC-01',
 }: LuxuryTopNavProps) {
+  const ultrasonic = useUltrasonicSensor({ pollingIntervalMs: 800 });
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const [currentName, setCurrentName] = useState(userName);
   const [currentUpi, setCurrentUpi] = useState(upiId || '');
@@ -391,6 +396,61 @@ export default function LuxuryTopNav({
                 </span>
               </div>
             </div>
+
+            {/* Sub-Divider */}
+            <div className="top-nav-divider" />
+
+            {/* Ultrasonic HC-SR04 Sensor Live Distance Pill */}
+            <button
+              type="button"
+              onClick={onOpenUltrasonic}
+              className="pill-dropdown-item"
+              style={{ display: 'flex', alignItems: 'center', gap: '10px', background: 'transparent', border: 'none', cursor: 'pointer', padding: 0 }}
+              title={`HC-SR04 Ultrasonic Distance Sensor: ${
+                ultrasonic.distance !== null && ultrasonic.distance !== undefined
+                  ? `${ultrasonic.distance.toFixed(1)} cm`
+                  : ultrasonic.distance === null
+                  ? 'No echo'
+                  : 'Connecting...'
+              } • Counter #${ultrasonic.counter ?? '--'} (Click to view live IoT dashboard)`}
+            >
+              <GlassIcon icon={Radio} color="cyan" size={32} />
+              <div>
+                <span
+                  className="pill-dropdown-label"
+                  style={{
+                    fontSize: '11px',
+                    fontWeight: 700,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '5px',
+                  }}
+                >
+                  <span>Sonar</span>
+                  <span
+                    style={{
+                      width: '6px',
+                      height: '6px',
+                      borderRadius: '50%',
+                      background:
+                        ultrasonic.status === 'connected'
+                          ? '#10b981'
+                          : ultrasonic.status === 'stale'
+                          ? '#f59e0b'
+                          : '#ef4444',
+                      boxShadow: ultrasonic.status === 'connected' ? '0 0 6px #10b981' : 'none',
+                    }}
+                  />
+                </span>
+                <span className="pill-dropdown-value" style={{ fontSize: '13.5px', fontWeight: 800, fontFamily: 'monospace' }}>
+                  {ultrasonic.distance !== null && ultrasonic.distance !== undefined
+                    ? `${ultrasonic.distance.toFixed(1)} cm`
+                    : ultrasonic.distance === null
+                    ? 'No echo'
+                    : '--'}
+                </span>
+              </div>
+            </button>
 
             {/* Sub-Divider */}
             <div className="top-nav-divider" />

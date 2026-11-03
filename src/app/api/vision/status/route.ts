@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import fs from 'fs';
 import path from 'path';
 
-const VISION_SERVICE_URL = process.env.VISION_SERVICE_URL || 'http://127.0.0.1:8000';
+const VISION_SERVICE_URL = process.env.VISION_SERVICE_URL || 'http://127.0.0.1:8001';
 
 export async function GET() {
   const modelsDir = path.join(process.cwd(), 'models');

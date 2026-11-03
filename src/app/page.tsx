@@ -9,6 +9,7 @@ import HardwareSimulatorPanel from '@/components/HardwareSimulatorPanel';
 import CartList from '@/components/CartList';
 import ProductCatalogModal from '@/components/ProductCatalogModal';
 import CartHistoryModal from '@/components/CartHistoryModal';
+import UltrasonicDashboard from '@/components/UltrasonicDashboard';
 import { Product, CartSummary, IoTTelemetry } from '@/types';
 import { getStoredCart, calculateCartSummary, addItemToCart, clearCart } from '@/lib/cart-store';
 import { iotSimulator } from '@/lib/iot-simulator';
@@ -45,7 +46,7 @@ export default function GroceryDashboard() {
   });
 
   // Modal overlay state
-  const [activeModal, setActiveModal] = useState<'none' | 'scanner' | 'catalogue' | 'cart' | 'hardware' | 'history'>('none');
+  const [activeModal, setActiveModal] = useState<'none' | 'scanner' | 'catalogue' | 'cart' | 'hardware' | 'history' | 'ultrasonic'>('none');
   const [webcamScanTrigger, setWebcamScanTrigger] = useState<number>(0);
 
   useEffect(() => {
@@ -251,6 +252,7 @@ export default function GroceryDashboard() {
         onOpenScanner={() => setActiveModal('scanner')}
         onOpenHardwareConsole={() => setActiveModal('hardware')}
         onOpenCatalogue={() => setActiveModal('catalogue')}
+        onOpenUltrasonic={() => setActiveModal('ultrasonic')}
       />
 
       {/* Left Vertical Dock Navigation */}
@@ -263,6 +265,7 @@ export default function GroceryDashboard() {
         onOpenHardwareConsole={() => setActiveModal('hardware')}
         onNewCartAccount={handleNewCartAccount}
         onOpenHistory={() => setActiveModal('history')}
+        onOpenUltrasonic={() => setActiveModal('ultrasonic')}
       />
 
       {/* Main Autonomous Shopping Dashboard View (Camera Scanner + Catalog Grid + Live Cart) */}
@@ -271,6 +274,7 @@ export default function GroceryDashboard() {
         telemetry={telemetry}
         onAddItem={handleItemValidated}
         onOpenCatalogueModal={() => setActiveModal('catalogue')}
+        onOpenUltrasonicModal={() => setActiveModal('ultrasonic')}
         autoStartWebcamTrigger={webcamScanTrigger}
       />
 
@@ -368,6 +372,24 @@ export default function GroceryDashboard() {
         onStartNewCart={handleNewCartAccount}
         activeCartCode={activeCartCode}
       />
+
+      {/* MODAL 6: ESP32 Ultrasonic Distance Monitoring Dashboard */}
+      {activeModal === 'ultrasonic' && (
+        <div className="modal-backdrop-luxury" onClick={() => setActiveModal('none')}>
+          <div
+            style={{
+              width: '100%',
+              maxWidth: '840px',
+              padding: 0,
+              background: 'transparent',
+              position: 'relative',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <UltrasonicDashboard onClose={() => setActiveModal('none')} />
+          </div>
+        </div>
+      )}
     </div>
   );
 }

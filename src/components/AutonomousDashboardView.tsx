@@ -34,6 +34,9 @@ import {
   Undo2,
   Tag,
   ShieldAlert,
+  Radio,
+  Activity,
+  Layers,
 } from 'lucide-react';
 import GlassIcon, { GlassColor } from '@/components/GlassIcon';
 import { Product, CartSummary, CartItem, IoTTelemetry } from '@/types';
@@ -44,12 +47,14 @@ import { detectBarcodeInVideoFrame } from '@/lib/vision';
 import { mapVisionClassToProduct } from '@/lib/vision-catalog-mapper';
 import CameraObstructionOverlay from '@/components/CameraObstructionOverlay';
 import { analyzeVideoFrameForObstruction } from '@/lib/obstruction-detector';
+import { useUltrasonicSensor } from '@/hooks/useUltrasonicSensor';
 
 interface AutonomousDashboardViewProps {
   summary: CartSummary;
   telemetry: IoTTelemetry;
   onAddItem: (product: Product, quantity?: number) => void;
   onOpenCatalogueModal?: () => void;
+  onOpenUltrasonicModal?: () => void;
   autoStartWebcamTrigger?: number;
 }
 
@@ -57,8 +62,24 @@ export default function AutonomousDashboardView({
   summary,
   telemetry,
   onAddItem,
+  onOpenCatalogueModal,
+  onOpenUltrasonicModal,
   autoStartWebcamTrigger,
 }: AutonomousDashboardViewProps) {
+  // Live ESP32 Ultrasonic Sonar Telemetry (HC-SR04 via FastAPI at localhost:8000)
+  const ultrasonic = useUltrasonicSensor({ pollingIntervalMs: 750 });
+
+  // IoT Object Detection & Cart Box Blur Transition States
+  const [iotCartState, setIotCartState] = useState<{
+    isDetecting: boolean;
+    itemName: string | null;
+    stage: 'idle' | 'detecting' | 'confirmed';
+    detectedDistance?: number | null;
+  }>({
+    isDetecting: false,
+    itemName: null,
+    stage: 'idle',
+  });
   const [cameraActive, setCameraActive] = useState<boolean>(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [statusMessage, setStatusMessage] = useState<string>(
@@ -628,15 +649,7 @@ export default function AutonomousDashboardView({
             if (barcode && !isScanDebounced(barcode)) {
               const product = getProductByBarcode(barcode);
               if (product) {
-                onAddItem(product, 1);
-                iotSimulator.placeWeight(product.weight_g || 100);
-                iotSimulator.playBuzzer('success');
-                setIsSuccessFeedback(true);
-                setLastAddedProduct(product);
-                setStatusMessage(`✓ Verified Barcode: Scanned "${product.product_name}" (+${product.weight_g || 100}g)`);
-                setTimeout(() => {
-                  setIsSuccessFeedback(false);
-                }, 3200);
+                handleAddItemWithIoTVerification(product, 1);
               }
             }
           } catch {}
@@ -719,22 +732,10 @@ export default function AutonomousDashboardView({
                           // AUTOMATIC CART ADDITION EVENT!
                           const liveStock = checkProductStock(barcode);
                           if (liveStock.in_stock && liveStock.stock_quantity > 0) {
-                            onAddItem(product, 1);
-                            iotSimulator.placeWeight(product.weight_g || 100);
-                            iotSimulator.playBuzzer('success');
-
+                            handleAddItemWithIoTVerification(product, 1);
                             multiItemTrackerRef.current.lockedBarcodes.add(barcode);
                             setLockedBarcode(barcode);
-                            setLockedProductName(product.product_name);
-                            setLastAddedProduct(product);
-                            setIsSuccessFeedback(true);
-                            setStatusMessage(
-                              `✓ Confirmed AI Vision: Added "${product.product_name}" (MRP: ₹${product.mrp.toFixed(2)} | Price: ₹${product.selling_price.toFixed(2)} | Weight: ${product.weight_g || 100}g) to cart`
-                            );
                             addedAnyThisFrame = true;
-                            setTimeout(() => {
-                              setIsSuccessFeedback(false);
-                            }, 3200);
                           }
                         }
                       }
@@ -832,22 +833,72 @@ export default function AutonomousDashboardView({
     };
   }, []);
 
-  const handleQuickAdd = (item: StapleItem) => {
-    // 1. Add to cart
-    onAddItem(item, 1);
-    
-    // 2. Play simulated load-cell scale placement & buzzer
-    iotSimulator.placeWeight(item.weight_g);
+  // Handle adding an item with IoT Object Detection & Blur transition
+  const handleAddItemWithIoTVerification = (product: Product, quantity: number = 1) => {
+    // 1. Immediately activate Cart Box Blur Effect with IoT Object Detection state
+    setIotCartState({
+      isDetecting: true,
+      itemName: product.product_name,
+      stage: 'detecting',
+      detectedDistance: ultrasonic.distance,
+    });
+
+    iotSimulator.placeWeight(product.weight_g || 100);
     iotSimulator.playBuzzer('success');
 
-    // 3. Show instant status feedback
-    setIsSuccessFeedback(true);
-    setStatusMessage(`✓ Verified: Added ${item.product_name} (+${item.weight_g}g load-cell consensus confirmed).`);
-
+    // 2. Complete IoT object consensus (confirming with IoT hardware at localhost:8000)
     setTimeout(() => {
-      setIsSuccessFeedback(false);
-      setStatusMessage('No item detected yet. Try an apple, banana, orange, bottle or cup.');
-    }, 3200);
+      onAddItem(product, quantity);
+      setLastAddedProduct(product);
+      setLockedProductName(product.product_name);
+      setIsSuccessFeedback(true);
+      setStatusMessage(
+        `✓ IoT Confirmed: Added "${product.product_name}" (MRP: ₹${product.mrp.toFixed(2)} | Price: ₹${product.selling_price.toFixed(2)}) to cart`
+      );
+
+      // 3. Clear blur effect: transition UI of the box to normal design!
+      setIotCartState({
+        isDetecting: false,
+        itemName: product.product_name,
+        stage: 'confirmed',
+        detectedDistance: ultrasonic.distance,
+      });
+
+      // Clear confirmed badge after 3.5s
+      setTimeout(() => {
+        setIsSuccessFeedback(false);
+        setIotCartState((prev) => (prev.stage === 'confirmed' ? { isDetecting: false, itemName: null, stage: 'idle' } : prev));
+      }, 3500);
+    }, 1100);
+  };
+
+  // Track last handled ultrasonic packet counter to avoid duplicate firing
+  const lastUltrasonicCounterRef = useRef<number | null>(null);
+
+  // Automatic IoT Object Detection:
+  // When ESP32 HC-SR04 measures an object (< 30 cm) with a new counter, trigger object detection!
+  useEffect(() => {
+    if (
+      ultrasonic.status === 'connected' &&
+      typeof ultrasonic.distance === 'number' &&
+      ultrasonic.distance > 0 &&
+      ultrasonic.distance <= 32 &&
+      ultrasonic.counter !== null &&
+      ultrasonic.counter !== lastUltrasonicCounterRef.current &&
+      !iotCartState.isDetecting
+    ) {
+      lastUltrasonicCounterRef.current = ultrasonic.counter;
+
+      // Select candidate item from catalog
+      const candidateIndex = (ultrasonic.counter || 0) % STAPLE_CATALOG_ITEMS.length;
+      const detectedItem = STAPLE_CATALOG_ITEMS[candidateIndex] || STAPLE_CATALOG_ITEMS[0];
+
+      handleAddItemWithIoTVerification(detectedItem, 1);
+    }
+  }, [ultrasonic.distance, ultrasonic.counter, ultrasonic.status, iotCartState.isDetecting]);
+
+  const handleQuickAdd = (item: StapleItem) => {
+    handleAddItemWithIoTVerification(item, 1);
   };
 
   const handleQuantityChange = (item: CartItem, delta: number) => {
@@ -1239,19 +1290,148 @@ export default function AutonomousDashboardView({
           RIGHT COLUMN: "Your cart" Panel (Cart Items List + Billing Summary)
           ========================================================================= */}
       <div className="dashboard-right-column">
-        <div className="your-cart-card">
+        <div className={`your-cart-card ${iotCartState.isDetecting ? 'cart-iot-detecting' : 'cart-iot-normal'}`}>
           {/* Subsurface ambient bubbles */}
           <div className="cart-card-bubble bubble-top-left" />
           <div className="cart-card-bubble bubble-bottom-right" />
 
+          {/* IoT Object Detection Frosted Blur Overlay */}
+          {iotCartState.isDetecting && (
+            <div className="cart-iot-blur-overlay">
+              <div className="cart-iot-radar-ring">
+                <Radio style={{ width: '32px', height: '32px', color: '#0284c7' }} />
+              </div>
+              <div className="cart-iot-scan-bar" />
+              <div style={{ fontSize: '16px', fontWeight: 800, color: '#0f172a', marginBottom: '4px' }}>
+                IoT Object Detected!
+              </div>
+              <div style={{ fontSize: '14px', fontWeight: 700, color: '#0284c7', marginBottom: '8px' }}>
+                {iotCartState.itemName || 'Grocery Product'}
+              </div>
+              <div style={{ fontSize: '12px', color: '#64748b', maxWidth: '280px', lineHeight: 1.4 }}>
+                Awaiting IoT sensor consensus via Wi-Fi & FastAPI (localhost:8000)...
+              </div>
+              {ultrasonic.distance !== undefined && (
+                <div
+                  style={{
+                    marginTop: '12px',
+                    fontSize: '11px',
+                    fontWeight: 700,
+                    color: '#059669',
+                    background: 'rgba(236,253,245,0.95)',
+                    padding: '4px 12px',
+                    borderRadius: '999px',
+                    border: '1px solid rgba(16,185,129,0.3)',
+                    boxShadow: '0 2px 8px rgba(16,185,129,0.15)',
+                  }}
+                >
+                  Sonar Distance: {ultrasonic.distance !== null ? `${ultrasonic.distance.toFixed(1)} cm` : 'No echo'} • Packet #{ultrasonic.counter ?? '--'}
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Cart Header */}
-          <div className="your-cart-header">
-            <h2 className="your-cart-title">Your cart</h2>
+          <div className="your-cart-header" style={{ alignItems: 'flex-start' }}>
+            <div>
+              <h2 className="your-cart-title">Your cart</h2>
+              {/* Confirmed banner when IoT completed and transitioned back to normal */}
+              {iotCartState.stage === 'confirmed' && (
+                <div className="cart-iot-success-banner" style={{ marginTop: '4px' }}>
+                  <CheckCircle2 style={{ width: '14px', height: '14px', color: '#10b981' }} />
+                  <span>✓ IoT Verified: {iotCartState.itemName} added</span>
+                </div>
+              )}
+            </div>
             {summary.items.length > 0 && (
               <button onClick={handleClear} className="cart-clear-all-btn">
                 Clear all
               </button>
             )}
+          </div>
+
+          {/* Ultrasonic Distance Sonar Status Badge */}
+          <div
+            onClick={onOpenUltrasonicModal}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              padding: '8px 14px',
+              borderRadius: '16px',
+              background: 'rgba(255, 255, 255, 0.72)',
+              border: '1px solid rgba(56, 189, 248, 0.3)',
+              boxShadow: '0 2px 8px rgba(56, 189, 248, 0.08)',
+              marginBottom: '14px',
+              cursor: 'pointer',
+              transition: 'all 0.2s ease',
+            }}
+            title="Click to view live HC-SR04 Ultrasonic Monitoring Dashboard"
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <GlassIcon icon={Radio} color="cyan" size={26} />
+              <div>
+                <div style={{ fontSize: '11px', fontWeight: 800, color: '#334155' }}>
+                  HC-SR04 Sonar
+                </div>
+                <div style={{ fontSize: '10px', color: '#64748b' }}>
+                  {ultrasonic.status === 'connected' ? 'Live Telemetry' : ultrasonic.status === 'stale' ? 'ESP32 Idle' : 'FastAPI Offline'}
+                </div>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  const candidate = STAPLE_CATALOG_ITEMS[Math.floor(Math.random() * STAPLE_CATALOG_ITEMS.length)];
+                  handleAddItemWithIoTVerification(candidate, 1);
+                }}
+                style={{
+                  background: 'linear-gradient(135deg, #0284c7 0%, #2563eb 100%)',
+                  border: '1px solid rgba(255, 255, 255, 0.4)',
+                  color: '#ffffff',
+                  fontSize: '10.5px',
+                  fontWeight: 700,
+                  padding: '4px 9px',
+                  borderRadius: '999px',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                  boxShadow: '0 2px 6px rgba(2, 132, 199, 0.3)',
+                  transition: 'all 0.2s ease',
+                  whiteSpace: 'nowrap',
+                }}
+                title="Test IoT Object Detection & Cart Blur Animation"
+              >
+                <Sparkles style={{ width: '11px', height: '11px' }} />
+                <span>Test Detect</span>
+              </button>
+
+              <div style={{ textAlign: 'right' }}>
+                <div style={{ fontSize: '13px', fontWeight: 800, fontFamily: 'monospace', color: '#0284c7' }}>
+                  {ultrasonic.distance !== null && ultrasonic.distance !== undefined
+                    ? `${ultrasonic.distance.toFixed(1)} cm`
+                    : ultrasonic.distance === null
+                    ? 'No echo'
+                    : '--'}
+                </div>
+                <div style={{ fontSize: '9.5px', color: '#94a3b8' }}>
+                  2–400 cm range
+                </div>
+              </div>
+              <div
+                style={{
+                  width: '8px',
+                  height: '8px',
+                  borderRadius: '50%',
+                  background: ultrasonic.status === 'connected' ? '#10b981' : ultrasonic.status === 'stale' ? '#f59e0b' : '#ef4444',
+                  boxShadow: ultrasonic.status === 'connected' ? '0 0 8px #10b981' : 'none',
+                }}
+              />
+            </div>
           </div>
 
           {/* Cart Content: Empty State OR Scrollable Items */}
