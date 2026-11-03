@@ -55,13 +55,21 @@
 
 🤖 **AI Computer Vision & Camera Obstruction Detection** — Real-time product recognition using custom-trained YOLO models (YOLOv11n / YOLOv26s) with webcam + barcode scanning, paired with active anti-fraud camera obstruction and lens covering detection.
 
-⚖️ **Precision Weight Sensing** — ESP32 + HX711 24-bit ADC load cell with calibrated tare, stability detection, and newline-terminated JSON serial protocol.
+📐 **4-Side Ultrasonic Dimension Sensing** — Four HC-SR04 sensors (Front, Rear, Left, Right) mounted inside the basket measure item dimensions (Length × Width × Height in cm) in real-time, enabling **volume-based item detection** and add/remove confirmation without relying solely on weight.
+
+⚖️ **Precision Weight Sensing** — ESP32 + HX711 24-bit ADC load cell with calibrated tare, stability detection, and newline-terminated JSON serial protocol; weight verification confirms item addition and removal.
+
+📟 **Tablet Display (0°–90° Adjustable)** — Android 8" / 10.1" tablet mounted on the cart handle shows detected items, running quantity, total price, and real-time alerts (Add / Remove / Alert) directly from the ESP32 over Wi-Fi.
+
+🔋 **Wireless & Battery-Powered** — 7.4V Li-ion battery with DC-DC converter (5V regulated) powers the ESP32, sensors, and display, enabling a fully wireless, cable-free cart experience.
 
 💎 **Luxury Glassmorphic UI** — Premium design with glassmorphic surfaces, `backdrop-filter: blur(24px)`, Manrope/Inter typography, pill navigation, and canvas confetti celebrations.
 
 💳 **YouPI-PG Dynamic UPI Payment Gateway** — Direct-to-bank settlement engine generating pure vector SVG UPI QR codes and 1-tap deep links (`upi://pay`) for Google Pay, PhonePe, Paytm, and CRED routing to `kash78532@okhdfcbank` with 0% gateway fees.
 
 ☁️ **Cloud-First Backend** — Supabase (PostgreSQL + GoTrue Auth + RLS), real-time cart synchronization, and order history with robust audit trails.
+
+🛡️ **LED & Buzzer Real-Time Feedback** — Three-colour LED indicators (Green = Add, Yellow = Scan, Red = Remove) and buzzer alert provide instant physical feedback on every cart event.
 
 ---
 
@@ -131,7 +139,7 @@ The system follows an **8-step autonomous workflow** from cart pick-up to auto-p
 | **🎭 Design System** | Luxury Glassmorphism | `backdrop-filter: blur(24px)`, Manrope/Inter fonts. Color Tokens: Midnight Purple `#25105F`, Sky Blue `#A9D2F0`, Deep Blue `#527CA7`, Warm Gold `#DAB77D`, Emerald `#10B981` |
 | **📊 Data Engine** | 5,198 Products (DMart) | Indian grocery catalog with MRP/selling price, multi-pack weight parsing, barcode provenance tracking |
 | **👁️ Vision & Anti-Fraud** | YOLO v11n / v26s + Obstruction Detector | Custom-trained grocery detection, HTML5 BarcodeDetector, automated camera obstruction / lens covering protection |
-| **⚙️ IoT Firmware** | ESP32 + HX711 | C++ firmware, JSON serial protocol, LED/Buzzer alerts, Hardware Emulator |
+| **⚙️ IoT Firmware** | ESP32 + HX711 + HC-SR04 (×4) | C++ firmware, JSON serial protocol, 4-side ultrasonic dimension sensing (L×W×H), load cell weight verification, LED/Buzzer alerts, Hardware Emulator |
 | **🔗 Serial Bridge** | Python (pyserial) | Real-time telemetry bridge: `serial_bridge.py` with simulation mode |
 | **☁️ Backend** | Supabase | PostgreSQL + GoTrue Auth + Row-Level Security (RLS) + Order Snapshots |
 | **💳 Payments** | YouPI-PG (Direct UPI) | Dynamic vector SVG UPI QR, 1-tap deep links (`upi://pay`), receiver VPA `kash78532@okhdfcbank`, server verification |
@@ -141,22 +149,22 @@ The system follows an **8-step autonomous workflow** from cart pick-up to auto-p
 
 ## 📐 Hardware Blueprints
 
-### Full Smart Cart Blueprint (Final Design)
+### Full Smart Cart Blueprint (Final Design — SSC-003)
 
 <div align="center">
-<img src="Documents/Sample images/AI_Smart_Shopping_Cart_Blueprint_1.png" alt="AI Smart Shopping Cart Full Blueprint (Updated)" width="95%"/>
+<img src="Documents/Sample images/AI Smart Shopping Cart Blueprint.png" alt="AI Smart Shopping Cart Full Blueprint with Tablet Display & 4-Side Ultrasonic" width="95%"/>
 <br/>
-<b>Fig 2:</b> Complete Smart Cart Blueprint (Updated) — Front, Side, Rear, Top, Isometric views + 4-Side Ultrasonic Sensing, Tablet Display & IoT Wiring Diagram
+<b>Fig 2:</b> Complete Smart Cart Blueprint — Front, Side, Rear, Top &amp; Isometric views with Internal 4-Side Ultrasonic Sensors, Tablet Display (0°–90° Adjustable), Volume-Based Item Detection, Load Cell (Weight), ESP32 IoT Controller, 7.4V Li-ion Battery &amp; Full Wiring Diagram
 </div>
 
 <br/>
 
-### Stage 1 Blueprint (Laptop + Camera + IoT Components with 4-Side Ultrasonic Sensing)
+### Stage 1 Blueprint (Laptop + Camera + 4-Side Ultrasonic + IoT Components — Updated)
 
 <div align="center">
-<img src="Documents/Sample images/Stage_1_Smart_Cart_Blueprint.png" alt="Stage 1 Smart Cart Blueprint (Updated)" width="95%"/>
+<img src="Documents/Sample images/Stage 1 Smart Cart Blueprint.png" alt="Stage 1 Smart Cart Blueprint with 4-Side Ultrasonic Sensing" width="95%"/>
 <br/>
-<b>Fig 3:</b> Stage 1 Prototype (Updated) — System Setup, Load Cell, 4-Side Ultrasonic Layout, Component Dimensions, Wiring Diagram & Working Flow
+<b>Fig 3:</b> Stage 1 Prototype (Updated) — System Setup with 4-Side Ultrasonic Sensing (Front, Rear, Left, Right), Load Cell (Weight), Component Layout, Updated Wiring Diagram &amp; Working Flow — Item Identification + Dimension (L×W×H) + Weight + Add/Remove Detection
 </div>
 
 ---
@@ -212,12 +220,15 @@ python -m uvicorn services.vision_service:app --port 8000
 | Component | Specification |
 |:---|:---|
 | **Microcontroller** | ESP32 DevKit V1 (30-pin or 38-pin) |
-| **Load Cell** | Single-point aluminum strain gauge (5 kg / 10 kg rated) |
+| **Load Cell** | Single-point aluminum strain gauge (1 kg / 5 kg rated) |
 | **ADC Amplifier** | HX711 24-bit dual-channel ADC module |
-| **Indicator LEDs** | 1x Green 5mm LED, 1x Red 5mm LED |
-| **Resistors** | 2x 220 Ohm current-limiting resistors (for LEDs) |
-| **Audio Feedback** | 5V Active Buzzer (or 3.3V via 2N2222 NPN transistor) |
-| **Host Connection** | Laptop via Micro-USB / USB-C (115200 baud) |
+| **Distance Sensors** | HC-SR04 Ultrasonic ×4 — Front (Length), Rear (Length), Left (Width), Right (Width) |
+| **Indicator LEDs** | 1x Green 5mm LED (Add), 1x Yellow 5mm LED (Scan), 1x Red 5mm LED (Remove) |
+| **Resistors** | 3x 220 Ohm current-limiting resistors (for LEDs) |
+| **Audio Feedback** | 5V Active Buzzer (Scan Alert) |
+| **Display** | Android Tablet 8" / 10.1" (Wi-Fi connected, shows cart items & total) |
+| **Power Supply** | 7.4V Li-ion Battery with DC-DC converter (5V regulated) — for wireless operation |
+| **Host Connection** | Laptop / Tablet via USB or Wi-Fi (115200 baud serial or WebSocket) |
 
 ### Wiring Connections
 
@@ -227,9 +238,14 @@ python -m uvicorn services.vision_service:app --port 8000
 | **HX711** | GND | GND | Common ground |
 | **HX711** | DT (Data) | **GPIO 18** | High-speed serialized 24-bit reading |
 | **HX711** | SCK (Clock) | **GPIO 19** | Clock output from ESP32 |
-| **Green LED** | Anode (+) | **GPIO 21** | Through 220 Ohm resistor - Item Added |
-| **Red LED** | Anode (+) | **GPIO 22** | Through 220 Ohm resistor - Mismatch |
-| **Buzzer** | Signal (+) | **GPIO 23** | Active buzzer confirmation chirp |
+| **HC-SR04 Front** | TRIG / ECHO | **GPIO 13 / 12** | Length measurement (Front) |
+| **HC-SR04 Rear** | TRIG / ECHO | **GPIO 14 / 27** | Length measurement (Rear) |
+| **HC-SR04 Left** | TRIG / ECHO | **GPIO 26 / 25** | Width measurement (Left) |
+| **HC-SR04 Right** | TRIG / ECHO | **GPIO 33 / 32** | Width measurement (Right) |
+| **Green LED** | Anode (+) | **GPIO 21** | Through 220 Ohm resistor — Item Added |
+| **Yellow LED** | Anode (+) | **GPIO 22** | Through 220 Ohm resistor — Scan Alert |
+| **Red LED** | Anode (+) | **GPIO 15** | Through 220 Ohm resistor — Item Removed |
+| **Buzzer** | Signal (+) | **GPIO 23** | Active buzzer scan confirmation chirp |
 | **Load Cell** | Red Wire | E+ on HX711 | Excitation positive |
 | **Load Cell** | Black Wire | E- on HX711 | Excitation negative |
 | **Load Cell** | Green Wire | A- on HX711 | Analog signal negative |
@@ -240,8 +256,10 @@ python -m uvicorn services.vision_service:app --port 8000
 The ESP32 communicates over **115200 baud**, sending newline-terminated JSON:
 
 ```json
-{"device_id":"ESP32_STAGE1_CART01", "weight_g":182.4, "delta_g":182.4, "stable":true, "timestamp":123456}
+{"device_id":"ESP32_STAGE1_CART01", "weight_g":182.4, "delta_g":182.4, "stable":true, "dim_L_cm":12.5, "dim_W_cm":8.3, "dim_H_cm":6.1, "event":"add", "timestamp":123456}
 ```
+
+> `dim_L_cm`, `dim_W_cm`, `dim_H_cm` are computed from the 4-side ultrasonic readings (baseline distances minus current distances). `event` is `"add"` or `"remove"` based on distance change direction.
 
 **Inbound Commands (Laptop to ESP32):**
 
@@ -397,7 +415,10 @@ supabase/schema.sql
 |:---|:---|
 | Camera detection **alone** | Does **NOT** bill the item |
 | Weight change **alone** | Does **NOT** bill the item |
+| Ultrasonic dimension change **alone** | Flags potential add/remove; awaits weight confirmation |
 | Camera + Weight **both agree (within 20%)** | Item **CONFIRMED** and added to cart |
+| Ultrasonic volume change + Weight **both agree** | Volume-based item **CONFIRMED** (for opaque/non-visual items) |
+| Distances return to baseline | Item **REMOVED** from cart automatically |
 | Camera Obstructed / Covered | Cart scanning **PAUSED**; on-screen anti-tamper alert displayed until lens cleared |
 
 ### Put-Back Handling
@@ -484,15 +505,15 @@ porject-IoT/
 
 <div align="center">
 
-<img src="Documents/Sample images/AI_Smart_Shopping_Cart_Blueprint_1.png" alt="Full Cart Blueprint (Updated)" width="90%"/>
+<img src="Documents/Sample images/AI Smart Shopping Cart Blueprint.png" alt="Full Cart Blueprint with Tablet Display & 4-Side Ultrasonic" width="90%"/>
 
-**Full Cart Design (Updated)** — Multi-view engineering drawing with 4-side ultrasonic sensing, tablet display, IoT wiring diagram, key features, and components list
+**Full Cart Design (SSC-003)** — Multi-view engineering drawing (Front, Side, Rear, Top, Isometric) with 4-Side Internal Ultrasonic Sensors, Tablet Display (0°–90°), Volume-Based Item Detection, Load Cell, ESP32, 7.4V Li-ion Battery & Full Wiring Diagram
 
 <br/><br/>
 
-<img src="Documents/Sample images/Stage_1_Smart_Cart_Blueprint.png" alt="Stage 1 Prototype Blueprint (Updated)" width="90%"/>
+<img src="Documents/Sample images/Stage 1 Smart Cart Blueprint.png" alt="Stage 1 Prototype Blueprint with 4-Side Ultrasonic Sensing" width="90%"/>
 
-**Stage 1 Prototype (Updated)** — Laptop + Camera + Load Cell + 4-side ultrasonic setup with component dimensions, wiring diagram and working flow
+**Stage 1 Prototype (Updated)** — Laptop + Camera + 4-Side Ultrasonic Sensing (HC-SR04: Front, Rear, Left, Right) + Load Cell setup — Item Identification + Dimension (L×W×H) + Weight + Add/Remove Detection
 
 <br/><br/>
 
