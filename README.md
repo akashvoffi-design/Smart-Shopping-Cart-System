@@ -144,19 +144,19 @@ The system follows an **8-step autonomous workflow** from cart pick-up to auto-p
 ### Full Smart Cart Blueprint (Final Design)
 
 <div align="center">
-<img src="Documents/Sample images/AI Smart Shopping Cart Blueprint.png" alt="AI Smart Shopping Cart Full Blueprint" width="95%"/>
+<img src="Documents/Sample images/AI_Smart_Shopping_Cart_Blueprint_1.png" alt="AI Smart Shopping Cart Full Blueprint (Updated)" width="95%"/>
 <br/>
-<b>Fig 2:</b> Complete Smart Cart Blueprint — Front, Side, Rear, Top, Isometric views + IoT Component Wiring Diagram
+<b>Fig 2:</b> Complete Smart Cart Blueprint (Updated) — Front, Side, Rear, Top, Isometric views + 4-Side Ultrasonic Sensing, Tablet Display & IoT Wiring Diagram
 </div>
 
 <br/>
 
-### Stage 1 Blueprint (Laptop + Camera + IoT Components)
+### Stage 1 Blueprint (Laptop + Camera + IoT Components with 4-Side Ultrasonic Sensing)
 
 <div align="center">
-<img src="Documents/Sample images/Stage 1 Smart Cart Blueprint.png" alt="Stage 1 Smart Cart Blueprint" width="95%"/>
+<img src="Documents/Sample images/Stage_1_Smart_Cart_Blueprint.png" alt="Stage 1 Smart Cart Blueprint (Updated)" width="95%"/>
 <br/>
-<b>Fig 3:</b> Stage 1 Prototype — System Setup, Load Cell, Component Layout, Wiring Diagram & Working Flow
+<b>Fig 3:</b> Stage 1 Prototype (Updated) — System Setup, Load Cell, 4-Side Ultrasonic Layout, Component Dimensions, Wiring Diagram & Working Flow
 </div>
 
 ---
@@ -484,15 +484,15 @@ porject-IoT/
 
 <div align="center">
 
-<img src="Documents/Sample images/AI Smart Shopping Cart Blueprint.png" alt="Full Cart Blueprint" width="90%"/>
+<img src="Documents/Sample images/AI_Smart_Shopping_Cart_Blueprint_1.png" alt="Full Cart Blueprint (Updated)" width="90%"/>
 
-**Full Cart Design** — Multi-view engineering drawing with IoT wiring diagram, key features, and materials list
+**Full Cart Design (Updated)** — Multi-view engineering drawing with 4-side ultrasonic sensing, tablet display, IoT wiring diagram, key features, and components list
 
 <br/><br/>
 
-<img src="Documents/Sample images/Stage 1 Smart Cart Blueprint.png" alt="Stage 1 Prototype Blueprint" width="90%"/>
+<img src="Documents/Sample images/Stage_1_Smart_Cart_Blueprint.png" alt="Stage 1 Prototype Blueprint (Updated)" width="90%"/>
 
-**Stage 1 Prototype** — Laptop + Camera + Load Cell setup with component dimensions and working flow
+**Stage 1 Prototype (Updated)** — Laptop + Camera + Load Cell + 4-side ultrasonic setup with component dimensions, wiring diagram and working flow
 
 <br/><br/>
 
